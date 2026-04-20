@@ -90,7 +90,15 @@ export function ClawReveal() {
       </div>
 
       {/* Two diagonal cat-claw swipes, each 4 parallel near-straight slashes.
-          Pinned to z-0 so the headline (z-10) always sits on top. */}
+          Pinned to z-0 so the headline (z-10) always sits on top.
+
+          Color logic: swipe-1 slashes across "Enjoy the meal," — which is
+          neutral (cream in dark / near-black in light) — so accent orange
+          reads cleanly there. Swipe-2 crosses "not the math." which is
+          itself accent orange, so orange-on-orange clashed. Swipe-2 now
+          uses `currentColor` → `text-fg/30` so it renders as a muted
+          neutral tone that lets the orange italic text punch through in
+          both themes. */}
       <svg
         ref={svgRef}
         className="absolute inset-0 w-full h-full pointer-events-none z-0 overflow-visible"
@@ -98,20 +106,22 @@ export function ClawReveal() {
         preserveAspectRatio="none"
         aria-hidden
       >
-        {/* Swipe 1 — diagonal across "Enjoy the meal," from upper-left, angling down-right */}
+        {/* Swipe 1 — across "Enjoy the meal," (neutral text → accent works) */}
         <g className="swipe-1">
-          <path className="claw-path" d="M -20 10 Q 120 18, 280 40 T 600 120" stroke="rgb(255, 124, 97)" strokeWidth="5" strokeLinecap="round" fill="none" opacity="0.85" />
-          <path className="claw-path" d="M -20 38 Q 120 46, 280 70 T 600 160" stroke="rgb(255, 124, 97)" strokeWidth="8" strokeLinecap="round" fill="none" opacity="0.95" />
-          <path className="claw-path" d="M -20 68 Q 120 76, 280 102 T 600 200" stroke="rgb(255, 124, 97)" strokeWidth="8" strokeLinecap="round" fill="none" opacity="0.95" />
-          <path className="claw-path" d="M -20 100 Q 120 108, 280 136 T 600 240" stroke="rgb(255, 124, 97)" strokeWidth="5" strokeLinecap="round" fill="none" opacity="0.85" />
+          <path className="claw-path" d="M -20 10 Q 120 18, 280 40 T 600 120" stroke="rgb(255, 124, 97)" strokeWidth="4" strokeLinecap="round" fill="none" opacity="0.55" />
+          <path className="claw-path" d="M -20 38 Q 120 46, 280 70 T 600 160" stroke="rgb(255, 124, 97)" strokeWidth="7" strokeLinecap="round" fill="none" opacity="0.7" />
+          <path className="claw-path" d="M -20 68 Q 120 76, 280 102 T 600 200" stroke="rgb(255, 124, 97)" strokeWidth="7" strokeLinecap="round" fill="none" opacity="0.7" />
+          <path className="claw-path" d="M -20 100 Q 120 108, 280 136 T 600 240" stroke="rgb(255, 124, 97)" strokeWidth="4" strokeLinecap="round" fill="none" opacity="0.55" />
         </g>
 
-        {/* Swipe 2 — diagonal across "not the math." from left-middle to bottom-right */}
-        <g className="swipe-2">
-          <path className="claw-path" d="M 380 300 Q 560 320, 760 362 T 1030 428" stroke="rgb(255, 124, 97)" strokeWidth="5" strokeLinecap="round" fill="none" opacity="0.85" />
-          <path className="claw-path" d="M 380 332 Q 560 354, 760 398 T 1030 466" stroke="rgb(255, 124, 97)" strokeWidth="8" strokeLinecap="round" fill="none" opacity="0.95" />
-          <path className="claw-path" d="M 380 366 Q 560 390, 760 436 T 1030 506" stroke="rgb(255, 124, 97)" strokeWidth="8" strokeLinecap="round" fill="none" opacity="0.95" />
-          <path className="claw-path" d="M 380 402 Q 560 428, 760 476 T 1030 548" stroke="rgb(255, 124, 97)" strokeWidth="5" strokeLinecap="round" fill="none" opacity="0.85" />
+        {/* Swipe 2 — across "not the math." (orange text → neutral claws so
+            the accent pops instead of clashing). currentColor resolves to
+            text-fg on the <g>, which flips with the theme. */}
+        <g className="swipe-2 text-fg">
+          <path className="claw-path" d="M 380 300 Q 560 320, 760 362 T 1030 428" stroke="currentColor" strokeWidth="4" strokeLinecap="round" fill="none" opacity="0.22" />
+          <path className="claw-path" d="M 380 332 Q 560 354, 760 398 T 1030 466" stroke="currentColor" strokeWidth="7" strokeLinecap="round" fill="none" opacity="0.30" />
+          <path className="claw-path" d="M 380 366 Q 560 390, 760 436 T 1030 506" stroke="currentColor" strokeWidth="7" strokeLinecap="round" fill="none" opacity="0.30" />
+          <path className="claw-path" d="M 380 402 Q 560 428, 760 476 T 1030 548" stroke="currentColor" strokeWidth="4" strokeLinecap="round" fill="none" opacity="0.22" />
         </g>
       </svg>
     </div>
