@@ -1,0 +1,846 @@
+@import url('https://fonts.cdnfonts.com/css/cabinet-grotesk') layer(base);
+
+@import 'tailwindcss';
+
+/* Class-based dark variant — keyed off `[data-theme="dark"]` on <html>.
+   The inline boot script in layout.tsx sets the attribute synchronously
+   so there's no first-paint flash. */
+@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+
+@theme {
+  /* Brand — fixed across themes. Orange pops on both light + dark. */
+  --color-accent: rgb(255, 124, 97);
+  --color-accent2: rgb(253, 213, 9);
+
+  /* Primitive (fixed) — used when a surface is *intentionally* dark-or-light
+     regardless of theme: CTA wordmark section, marquee strips, cat mascot
+     chrome. These are creative decisions, not semantic surfaces. */
+  --color-ink: rgb(14, 14, 14);
+  --color-cream: rgb(248, 244, 240);
+  --color-charcoal: rgb(26, 26, 26);
+  --color-muted: rgb(117, 132, 125);
+
+  /* Semantic (theme-adaptive) — these ARE the theme. Utilities like
+     `bg-canvas`, `text-fg`, `bg-surface`, `border-line` resolve through
+     the raw custom properties below and flip when `[data-theme="dark"]`
+     is set. Prefer these on anything that should track the theme. */
+  --color-canvas: var(--canvas);
+  --color-fg: var(--fg);
+  --color-surface: var(--surface);
+  --color-card: var(--card);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+
+  --font-grotesk: 'Cabinet Grotesk', system-ui, sans-serif;
+
+  --text-hero: clamp(4.5rem, 13.2vw, 14rem);
+  --text-hero--line-height: 0.88;
+  --text-hero--letter-spacing: -0.04em;
+  --text-display: clamp(3.25rem, 9vw, 9rem);
+  --text-display--line-height: 0.92;
+  --text-display--letter-spacing: -0.035em;
+  --text-section: clamp(3.25rem, 7.2vw, 7.5rem);
+  --text-section--line-height: 0.94;
+  --text-section--letter-spacing: -0.032em;
+  --text-title: clamp(2rem, 4.4vw, 4.25rem);
+  --text-title--line-height: 1.02;
+  --text-title--letter-spacing: -0.02em;
+
+  --animate-tailSway: tailSway 2.6s ease-in-out infinite;
+  --animate-blink: blink 5s ease-in-out infinite;
+  --animate-sleep: sleep 2.4s ease-in-out infinite;
+  --animate-zzz: zzz 3s ease-in-out infinite;
+  --animate-marquee: marquee 40s linear infinite;
+
+  @keyframes tailSway {
+    0%, 100% { transform: rotate(-8deg); }
+    50%       { transform: rotate(8deg); }
+  }
+  @keyframes blink {
+    0%, 97%, 100% { transform: scaleY(1); }
+    98%, 99%      { transform: scaleY(0.08); }
+  }
+  @keyframes sleep {
+    0%, 100% { transform: scaleY(1); }
+    50%       { transform: scaleY(1.04); }
+  }
+  @keyframes zzz {
+    0%   { transform: translate(0, 0) scale(0.6); opacity: 0; }
+    25%  { opacity: 1; }
+    100% { transform: translate(18px, -36px) scale(1); opacity: 0; }
+  }
+  @keyframes marquee {
+    0%   { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+}
+
+/* ============================================================
+   Theme palette — light (default)
+============================================================ */
+:root {
+  --canvas: rgb(255, 255, 255);           /* page bg */
+  --fg: rgb(14, 14, 14);                  /* primary text */
+  --surface: rgb(248, 244, 240);          /* section panels (cream) */
+  --card: rgb(255, 255, 255);             /* elevated cards on surface */
+  --line: rgba(14, 14, 14, 0.12);
+  --line-strong: rgba(14, 14, 14, 0.18);
+
+  /* Legacy aliases used by shared CSS classes below. */
+  --accent: 255, 124, 97;
+  --accent2: 253, 213, 9;
+  --cream: 248, 244, 240;
+  --ink: 14, 14, 14;
+  --charcoal: 26, 26, 26;
+  --muted: 117, 132, 125;
+
+  --nav-bg: 255, 255, 255;
+  --noise-opacity: 0.05;
+
+  color-scheme: light;
+}
+
+/* ============================================================
+   Theme palette — dark
+============================================================ */
+[data-theme="dark"] {
+  --canvas: rgb(11, 11, 12);              /* near black, cool */
+  --fg: rgb(242, 238, 232);               /* warm off-white */
+  --surface: rgb(22, 21, 20);             /* warm deep panel */
+  --card: rgb(28, 26, 24);                /* slight lift above surface */
+  --line: rgba(242, 238, 232, 0.12);
+  --line-strong: rgba(242, 238, 232, 0.22);
+
+  --cream: 22, 21, 20;                    /* legacy `rgb(var(--cream))` → dark panel */
+  --ink: 242, 238, 232;                   /* legacy `rgb(var(--ink))` → light text */
+  --charcoal: 238, 232, 224;
+  --muted: 158, 160, 154;
+
+  --nav-bg: 11, 11, 12;
+  --noise-opacity: 0.08;
+
+  color-scheme: dark;
+}
+
+/* ============================================================
+   Fixed-dark sections — keep `bg-ink` / `text-cream` readable
+   regardless of theme. Primitives above would have flipped them,
+   so we force them back to the original dark values here.
+============================================================ */
+[data-theme="dark"] .bg-ink {
+  background-color: rgb(14, 14, 14);
+}
+[data-theme="dark"] .text-cream {
+  color: rgb(248, 244, 240);
+}
+[data-theme="dark"] .bg-cream\/15 {
+  background-color: rgba(248, 244, 240, 0.15);
+}
+[data-theme="dark"] .bg-cream\/25 {
+  background-color: rgba(248, 244, 240, 0.25);
+}
+[data-theme="dark"] .border-cream\/15 {
+  border-color: rgba(248, 244, 240, 0.15);
+}
+[data-theme="dark"] .border-cream\/25 {
+  border-color: rgba(248, 244, 240, 0.25);
+}
+[data-theme="dark"] .text-cream\/45 {
+  color: rgba(248, 244, 240, 0.45);
+}
+[data-theme="dark"] .text-cream\/90 {
+  color: rgba(248, 244, 240, 0.9);
+}
+
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html, body {
+  background: var(--canvas);
+  color: var(--fg);
+  font-family: 'Cabinet Grotesk', system-ui, sans-serif;
+  font-feature-settings: 'ss01', 'ss02';
+  transition: background-color 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+              color 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  /* Hide native scrollbars globally — Lenis drives the smooth scroll, so
+     the visible gutter adds nothing but chrome noise. Wheel / touch /
+     keyboard scrolling remain fully functional. */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* Sections transition smoothly when the theme flips. */
+section, header, footer, main, aside, .legal-prose {
+  transition: background-color 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+              color 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+              border-color 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* View-Transitions API swap — if the browser supports it, the theme toggle
+   cross-fades the whole viewport instead of repainting. Degrades gracefully. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.45s;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+::selection {
+  background: rgb(var(--accent));
+  color: #fff;
+}
+
+html.lenis,
+html.lenis body { height: auto; }
+.lenis.lenis-smooth { scroll-behavior: auto !important; }
+.lenis.lenis-smooth [data-lenis-prevent] { overscroll-behavior: contain; }
+.lenis.lenis-stopped { overflow: hidden; }
+.lenis.lenis-scrolling iframe { pointer-events: none; }
+
+/* ============================================================
+   Accessibility primitives
+============================================================ */
+
+/* Skip-to-content — parked off-screen; slides in on focus.
+   First thing in the tab order so keyboard users bypass the nav. */
+.skip-link {
+  position: fixed;
+  top: -80px;
+  left: 16px;
+  z-index: 100;
+  padding: 0.85rem 1.4rem;
+  border-radius: 999px;
+  background: rgb(var(--ink));
+  color: rgb(var(--cream));
+  font-family: 'Cabinet Grotesk', system-ui, sans-serif;
+  font-weight: 600;
+  font-size: 0.95rem;
+  letter-spacing: -0.01em;
+  box-shadow: 0 20px 40px -20px rgba(0, 0, 0, 0.4);
+  transition: top 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.skip-link:focus-visible {
+  top: 16px;
+  outline: 2px solid rgb(var(--accent));
+  outline-offset: 3px;
+}
+
+/* Global focus ring — accent-colored, slightly offset, rounded.
+   Overridden per-component only when geometry demands it. */
+:focus-visible {
+  outline: 2px solid rgb(var(--accent));
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+a:focus-visible,
+button:focus-visible,
+[role='button']:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid rgb(var(--accent));
+  outline-offset: 3px;
+}
+/* Pills / round elements get a matching rounded halo instead of the
+   default rectangular outline so the focus feels hand-fit. */
+.btn-primary:focus-visible,
+.btn-ghost:focus-visible,
+.theme-toggle:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 3px var(--canvas),
+    0 0 0 5px rgb(var(--accent));
+}
+
+/* Screen-reader-only — used on icon-only buttons to provide text
+   for assistive tech without affecting the visual design. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ============================================================
+   Typography primitives
+============================================================ */
+.word {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: top;
+}
+.word > span {
+  display: inline-block;
+  transform: translateY(110%);
+  will-change: transform;
+}
+
+/* ============================================================
+   Primary CTA — original button (initial-commit state)
+============================================================ */
+@keyframes btn-glow-pulse {
+  0%, 100% {
+    box-shadow:
+      0 14px 32px -16px rgba(255, 124, 97, 0.6),
+      0 0 0 0 rgba(255, 124, 97, 0.45);
+  }
+  50% {
+    box-shadow:
+      0 18px 42px -12px rgba(255, 124, 97, 0.85),
+      0 0 0 10px rgba(255, 124, 97, 0);
+  }
+}
+@keyframes btn-shimmer {
+  0%   { transform: translateX(-140%) skewX(-20deg); opacity: 0; }
+  15%  { opacity: 0.7; }
+  55%  { opacity: 0.7; }
+  70%  { transform: translateX(240%) skewX(-20deg); opacity: 0; }
+  100% { transform: translateX(240%) skewX(-20deg); opacity: 0; }
+}
+
+.btn-primary {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  background: rgb(var(--accent));
+  color: #fff;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  padding: 1.05rem 1.9rem;
+  border-radius: 999px;
+  transition: transform 0.35s cubic-bezier(.22, 1, .36, 1), background 0.3s ease;
+  overflow: hidden;
+  isolation: isolate;
+  animation: btn-glow-pulse 2.6s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+.btn-primary::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgb(var(--ink));
+  transform: translateY(100%);
+  transition: transform 0.55s cubic-bezier(.76, 0, .24, 1);
+  z-index: -1;
+}
+.btn-primary::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(
+    100deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.45) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  pointer-events: none;
+  animation: btn-shimmer 3.4s cubic-bezier(0.6, 0, 0.3, 1) infinite;
+  animation-delay: 1s;
+  z-index: 1;
+}
+.btn-primary:hover {
+  transform: translateY(-3px) scale(1.03);
+  animation-play-state: paused;
+  box-shadow: 0 26px 60px -18px rgba(255, 124, 97, 0.8);
+}
+.btn-primary:hover::before { transform: translateY(0); }
+.btn-primary:hover::after  { animation-play-state: paused; opacity: 0; }
+.btn-primary .arrow        { transition: transform 0.35s cubic-bezier(.22, 1, .36, 1); position: relative; z-index: 2; }
+.btn-primary:hover .arrow  { transform: translateX(6px); }
+.btn-primary > *           { position: relative; z-index: 2; }
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: var(--fg);
+  font-weight: 500;
+  /* vertical padding matches btn-primary (1.05rem) — 1px less to
+     account for ghost's 1px border so outer height is identical */
+  padding: calc(1.05rem - 1px) 1.9rem;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  transition: background .3s ease, color .3s ease, border-color .3s ease;
+  background: transparent;
+}
+.btn-ghost:hover {
+  background: var(--fg);
+  color: var(--canvas);
+  border-color: var(--fg);
+}
+
+/* Link with orange underline wiping in from left */
+.ul-link {
+  position: relative;
+  display: inline-block;
+}
+.ul-link::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -3px;
+  height: 2px;
+  width: 100%;
+  background: rgb(var(--accent));
+  transform-origin: left;
+  transform: scaleX(0);
+  transition: transform .55s cubic-bezier(.22, 1, .36, 1);
+}
+.ul-link:hover::after { transform: scaleX(1); }
+.ul-link[aria-current='page']::after { transform: scaleX(1); }
+
+/* Eyebrow labels — small uppercase all-caps with a leading rule */
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: rgb(var(--muted));
+}
+.eyebrow::before {
+  content: '';
+  display: inline-block;
+  width: 22px;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.55;
+}
+
+/* Noise overlay — opacity adapts so grain is visible in dark too */
+.noise {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: var(--noise-opacity);
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; }
+
+/* ============================================================
+   Legal prose — token-aware
+============================================================ */
+.legal-prose { font-size: 1rem; line-height: 1.7; color: var(--fg); }
+.legal-prose h2 {
+  font-family: 'Cabinet Grotesk', sans-serif;
+  font-weight: 700;
+  font-size: 1.5rem;
+  letter-spacing: -0.02em;
+  color: var(--fg);
+  margin-top: 2.5rem;
+  margin-bottom: 0.75rem;
+}
+.legal-prose h3 {
+  font-family: 'Cabinet Grotesk', sans-serif;
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--fg);
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+.legal-prose p { margin-bottom: 1rem; color: color-mix(in srgb, var(--fg) 78%, transparent); }
+.legal-prose ul { list-style: none; padding-left: 0; margin-bottom: 1rem; }
+.legal-prose ul li {
+  position: relative;
+  padding-left: 1.25rem;
+  margin-bottom: 0.5rem;
+  color: color-mix(in srgb, var(--fg) 78%, transparent);
+}
+.legal-prose ul li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.65em;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgb(var(--accent));
+}
+.legal-prose strong { color: var(--fg); font-weight: 600; }
+.legal-prose a {
+  color: var(--fg);
+  text-decoration: underline;
+  text-decoration-color: rgb(var(--accent));
+  text-underline-offset: 4px;
+  text-decoration-thickness: 2px;
+}
+.legal-prose a:hover { color: rgb(var(--accent)); }
+
+/* Rotating stamp seal */
+@keyframes stamp-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.animate-stamp-spin {
+  animation: stamp-spin 24s linear infinite;
+  transform-origin: center center;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-stamp-spin { animation: none; }
+}
+
+/* ============================================================
+   Accordion — token-aware borders + clearer open-state
+============================================================ */
+.acc-item { border-top: 1px solid var(--line); }
+.acc-item:last-child { border-bottom: 1px solid var(--line); }
+.acc-head {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 1.85rem 0;
+  text-align: left;
+  font-size: clamp(1.2rem, 2.1vw, 1.7rem);
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  color: var(--fg);
+  cursor: pointer;
+  background: transparent;
+}
+.acc-head:hover { color: rgb(var(--accent)); }
+.acc-icon {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: var(--fg);
+  transition: background .35s ease, transform .5s cubic-bezier(.22, 1, .36, 1);
+}
+.acc-icon::before, .acc-icon::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  background: var(--canvas);
+  transition: transform .5s cubic-bezier(.22, 1, .36, 1);
+}
+.acc-icon::before { width: 12px; height: 2px; transform: translate(-50%, -50%); }
+.acc-icon::after  { width: 2px; height: 12px; transform: translate(-50%, -50%); }
+.acc-item.is-open .acc-icon {
+  background: rgb(var(--accent));
+  transform: rotate(135deg);
+}
+.acc-item.is-open .acc-icon::before,
+.acc-item.is-open .acc-icon::after { background: #fff; }
+
+.acc-body { overflow: hidden; height: 0; will-change: height; }
+.acc-body-inner {
+  padding: 0 0 1.85rem 0;
+  color: color-mix(in srgb, var(--fg) 65%, transparent);
+  max-width: 640px;
+  font-size: 1.05rem;
+  line-height: 1.65;
+}
+
+/* Fancy count-up dot (hero step labels) */
+.num-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: rgb(var(--accent));
+}
+
+/* Cat-specific */
+.cat-tail { transform-origin: 88% 70%; }
+.cat-eyelid { transform-origin: center; transform-box: fill-box; }
+.cat-body { transform-origin: 50% 85%; transform-box: fill-box; }
+
+.zzz-particle {
+  position: absolute;
+  color: color-mix(in srgb, var(--fg) 35%, transparent);
+  font-weight: 700;
+  font-size: 1rem;
+  pointer-events: none;
+}
+
+.hero-italic {
+  font-style: italic;
+  font-weight: 500;
+  color: rgb(var(--accent));
+}
+
+.vert {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  text-orientation: mixed;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--fg) 50%, transparent);
+}
+
+.tick-row {
+  display: flex;
+  gap: 3rem;
+  white-space: nowrap;
+  align-items: center;
+}
+
+/* Mobile menu overlay — always dark (it's a full-bleed moment) */
+.menu-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgb(var(--ink));
+  color: #fff;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  clip-path: circle(0% at calc(100% - 48px) 48px);
+  transition: clip-path 0.7s cubic-bezier(.76, 0, .24, 1);
+  pointer-events: none;
+}
+.menu-overlay.is-open {
+  clip-path: circle(150% at calc(100% - 48px) 48px);
+  pointer-events: auto;
+}
+[data-theme="dark"] .menu-overlay { background: rgb(14, 14, 14); }
+
+body:not(.ready) [data-fade-in] { opacity: 0; }
+
+/* Squiggle that draws itself in when parent gets .drawn */
+.squiggle path {
+  stroke-dasharray: 800;
+  stroke-dashoffset: 800;
+  transition: stroke-dashoffset 1.3s cubic-bezier(.76, 0, .24, 1) 0.2s;
+}
+.squiggle.drawn path { stroke-dashoffset: 0; }
+
+/* Hand-marker underline behind a word */
+.marker-word {
+  position: relative;
+  display: inline-block;
+  isolation: isolate;
+}
+.marker-word > svg.squiggle {
+  position: absolute;
+  left: -2%;
+  right: -2%;
+  bottom: -0.18em;
+  width: 104%;
+  height: 0.42em;
+  z-index: -1;
+  color: rgb(var(--accent));
+}
+
+.full-bleed {
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+}
+
+@keyframes slide-in-x {
+  0%   { transform: translateX(100%); opacity: 0; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+
+.paw-trail { position: absolute; inset: auto 0 0 0; height: 60px; pointer-events: none; }
+
+.cursive {
+  font-family: 'Cabinet Grotesk', system-ui, sans-serif;
+  font-style: italic;
+  font-weight: 500;
+}
+
+.ul-link-light::after { background: rgb(var(--accent)); }
+
+/* Cat-scratch reveal — claw marks draw across the hero headline */
+.claw-reveal .claw,
+.claw-reveal .claw-line {
+  transition: stroke-dashoffset 0.9s cubic-bezier(0.8, 0, 0.25, 1);
+}
+.claw-reveal.claws-in .claw-1 { stroke-dashoffset: 0; transition-delay: 0.15s; }
+.claw-reveal.claws-in .claw-2 { stroke-dashoffset: 0; transition-delay: 0.4s; }
+.claw-reveal.claws-in .claw-3 { stroke-dashoffset: 0; transition-delay: 0.62s; }
+
+/* Interactive phone ripple */
+.phone-card {
+  cursor: pointer;
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+.phone-card:hover {
+  transform: translateY(-8px) scale(1.03);
+  box-shadow: 0 55px 110px -30px rgba(14, 14, 14, 0.55), 0 0 0 6px rgba(255, 124, 97, 0.12);
+}
+[data-theme="dark"] .phone-card:hover {
+  box-shadow: 0 55px 110px -30px rgba(0, 0, 0, 0.85), 0 0 0 6px rgba(255, 124, 97, 0.18);
+}
+.phone-card:active { transform: translateY(-3px) scale(0.99); }
+.phone-ripple {
+  position: absolute;
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(255, 124, 97, 0.45) 0%, rgba(255, 124, 97, 0) 70%);
+  pointer-events: none;
+  transform: translate(-50%, -50%) scale(0);
+  animation: phone-ripple 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+@keyframes phone-ripple {
+  0%   { transform: translate(-50%, -50%) scale(0); opacity: 0.8; }
+  100% { transform: translate(-50%, -50%) scale(5); opacity: 0; }
+}
+
+@keyframes tap-pulse {
+  0%, 20% { transform: translate(-50%, -50%) scale(0.6); opacity: 0; }
+  30%     { transform: translate(-50%, -50%) scale(1); opacity: 0.85; }
+  60%     { transform: translate(-50%, -50%) scale(1.6); opacity: 0; }
+  100%    { transform: translate(-50%, -50%) scale(1.6); opacity: 0; }
+}
+.tap-indicator {
+  position: absolute;
+  width: 44px;
+  height: 44px;
+  border-radius: 9999px;
+  border: 2px solid rgb(255, 124, 97);
+  pointer-events: none;
+  animation: tap-pulse 3.2s ease-out infinite;
+}
+
+/* Cat peek — unchanged */
+@keyframes cat-peek {
+  0%, 14%   { transform: translateY(100%); }
+  22%       { transform: translateY(60%) rotate(-2deg); }
+  30%       { transform: translateY(30%) rotate(1deg); }
+  38%       { transform: translateY(18%) rotate(-1deg); }
+  46%       { transform: translateY(22%) rotate(2deg); }
+  54%       { transform: translateY(14%) rotate(-1deg); }
+  64%       { transform: translateY(40%) rotate(1deg); }
+  74%, 100% { transform: translateY(100%); }
+}
+.animate-cat-peek {
+  animation: cat-peek 7s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+  animation-delay: 1.8s;
+  transform: translateY(100%);
+  transform-origin: bottom center;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-cat-peek { animation: none; transform: translateY(100%); }
+}
+
+/* FAQ floating primitives */
+@keyframes faq-q-float {
+  0%, 100% { transform: translateY(0) rotate(-4deg); opacity: 0.9; }
+  50%      { transform: translateY(-12px) rotate(6deg); opacity: 1; }
+}
+.faq-q-float { display: inline-block; animation: faq-q-float 2.8s ease-in-out infinite; }
+
+@keyframes faq-cat-wiggle {
+  0%, 100% { transform: rotate(-4deg) translateY(0); }
+  25%      { transform: rotate(3deg) translateY(-2px); }
+  50%      { transform: rotate(-2deg) translateY(-4px); }
+  75%      { transform: rotate(4deg) translateY(-1px); }
+}
+.faq-cat-wiggle {
+  display: inline-block;
+  transform-origin: 50% 95%;
+  animation: faq-cat-wiggle 2.4s ease-in-out infinite;
+}
+
+/* Slow vertical auto-scroll for tall phone screens */
+.phone-tall-scroll {
+  animation: phone-tall-scroll 11s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+  will-change: transform;
+}
+@keyframes phone-tall-scroll {
+  0%, 12%   { transform: translateY(0); }
+  50%       { transform: translateY(-26%); }
+  88%, 100% { transform: translateY(0); }
+}
+
+/* ============================================================
+   Theme toggle — hand-crafted sun⇄moon swap
+============================================================ */
+.theme-toggle {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  display: inline-grid;
+  place-items: center;
+  color: var(--fg);
+  background: transparent;
+  border: 1px solid var(--line-strong);
+  transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+              background 0.3s ease,
+              border-color 0.3s ease,
+              color 0.3s ease;
+  overflow: hidden;
+}
+.theme-toggle:hover {
+  transform: rotate(-18deg);
+  border-color: rgb(var(--accent));
+  color: rgb(var(--accent));
+}
+.theme-toggle svg { width: 18px; height: 18px; }
+.theme-toggle .sun,
+.theme-toggle .moon {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  transition: transform 0.55s cubic-bezier(0.76, 0, 0.24, 1),
+              opacity 0.4s ease;
+}
+.theme-toggle .sun  { transform: translateY(0) rotate(0); opacity: 1; }
+.theme-toggle .moon { transform: translateY(120%) rotate(-90deg); opacity: 0; }
+
+[data-theme="dark"] .theme-toggle .sun  { transform: translateY(-120%) rotate(90deg); opacity: 0; }
+[data-theme="dark"] .theme-toggle .moon { transform: translateY(0) rotate(0); opacity: 1; }
+
+/* ============================================================
+   Cursor spotlight — dark-mode only. Soft warm glow that follows
+   the pointer via the --mx / --my custom properties that the Nav
+   component updates on pointermove. Adds depth without drawing
+   attention on small screens or reduced motion.
+============================================================ */
+.cursor-spot {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0;
+  background: radial-gradient(
+    600px circle at var(--mx, 50%) var(--my, 50%),
+    rgba(255, 124, 97, 0.10),
+    rgba(255, 124, 97, 0) 55%
+  );
+  transition: opacity 0.6s ease;
+}
+[data-theme="dark"] .cursor-spot { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .cursor-spot { display: none; } }
+@media (hover: none) { .cursor-spot { display: none; } }
+
+/* Global reduced motion fallback */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
