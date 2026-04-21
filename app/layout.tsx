@@ -1,14 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import "./globals.css";
-import { SmoothScroll } from "@/components/SmoothScroll";
-import { Nav } from "@/components/Nav";
-import { Footer } from "@/components/Footer";
-import { Ready } from "@/components/Ready";
-import { HelpAgent } from "@/components/HelpAgent";
-import { HashScroller } from "@/components/HashScroller";
 import { ThemeInit } from "@/components/ThemeInit";
-import { CursorSpot } from "@/components/CursorSpot";
 import { PostHogProvider } from "@/components/providers/PostHogProvider";
 import { PageViewTracker } from "@/components/PageViewTracker";
 
@@ -83,24 +76,11 @@ export default function RootLayout({
         <ThemeInit />
       </head>
       <body>
-        <a href="#main" className="skip-link">
-          Skip to content
-        </a>
         <PostHogProvider>
-          {/* PageViewTracker reads useSearchParams — Suspense boundary is
-              required so it doesn't force the whole tree into a client-
-              boundary bail-out during static rendering. */}
           <Suspense fallback={null}>
             <PageViewTracker />
           </Suspense>
-          <CursorSpot />
-          <Ready />
-          <SmoothScroll />
-          <HashScroller />
-          <Nav />
-          <div id="main">{children}</div>
-          <Footer />
-          <HelpAgent />
+          {children}
         </PostHogProvider>
       </body>
     </html>

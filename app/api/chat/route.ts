@@ -11,7 +11,7 @@ import {
 /**
  * Ask Tabby — streaming chat endpoint.
  *
- * Model: `google/gemini-3.1-flash-lite-preview` via Vercel AI Gateway.
+ * Model: `openai/gpt-oss-20b` via Vercel AI Gateway.
  *   - Billing + rate-limiting handled by Vercel (set `AI_GATEWAY_API_KEY`
  *     in env; on Vercel prod it's auto-provisioned by the AI Gateway
  *     product when the project has billing enabled).
@@ -43,7 +43,7 @@ type InMessage = { role: "user" | "assistant"; content: string };
 
 const MAX_MESSAGES = 20;
 const MAX_CHARS_PER_MESSAGE = 2000;
-const MODEL_ID = "google/gemini-3.1-flash-lite-preview";
+const MODEL_ID = "openai/gpt-oss-20b";
 
 function jsonError(body: Record<string, unknown>, status: number) {
   return new Response(JSON.stringify(body), {
