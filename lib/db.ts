@@ -6,6 +6,10 @@ import { neon } from "@neondatabase/serverless";
  * database is connected to the project). Falls back across variable
  * names because Vercel's integration has shipped different ones over
  * the years.
+ *
+ * Lazy: the connection string isn't read until the first query.
+ * Without this, Next's "Collecting page data" build step crashes on
+ * deployments where the env var isn't set yet (e.g. a fresh project).
  */
 function getConnectionString(): string {
   const url =
@@ -21,4 +25,17 @@ function getConnectionString(): string {
   return url;
 }
 
-export const sql = neon(getConnectionString());
+let _client: ReturnType<typeof neon> | null = null;
+function getClient(): ReturnType<typeof neon> {
+  if (!_client) _client = neon(getConnectionString());
+  return _client;
+}
+
+// Re-export with the same tagged-template shape so callers don't change.
+export const sql = ((
+  strings: TemplateStringsArray,
+  ...values: unknown[]
+) => (getClient() as unknown as (s: TemplateStringsArray, ...v: unknown[]) => unknown)(
+  strings,
+  ...values,
+)) as ReturnType<typeof neon>;

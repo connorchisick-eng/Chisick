@@ -74,7 +74,7 @@ export function IntroOverlay() {
           </span>
           <span className="intro-meta hidden sm:flex gap-8">
             <span>est. 2026</span>
-            <span>No venmo</span>
+            <span>No IOUs</span>
           </span>
         </div>
 

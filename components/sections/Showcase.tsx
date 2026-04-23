@@ -101,6 +101,7 @@ export function Showcase() {
     <section
       id="features"
       ref={sectionRef}
+      data-nav-invert
       className="relative bg-ink text-cream overflow-hidden"
     >
       <div className="noise" />
@@ -108,18 +109,37 @@ export function Showcase() {
       {/* BLOCK 1 — no phone; text left, payment methods grid right */}
       <div
         data-reverse="false"
-        className="sc-block relative mx-auto max-w-[1440px] px-6 lg:px-10 pt-14 lg:pt-20 pb-20 lg:pb-28"
+        className="sc-block relative mx-auto max-w-[1440px] px-6 lg:px-10 pt-14 lg:pt-20 pb-10 lg:pb-14"
       >
         <div className="relative grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 items-start">
           <div className="lg:col-span-5 relative z-10">
             <div className="sc-eyebrow eyebrow text-cream/50">Payments</div>
-            <h3 className="sc-heading mt-5 font-grotesk font-bold text-cream text-section">
+            <h3 className="sc-heading mt-5 font-grotesk font-bold text-cream text-title">
               Pay <span className="italic text-accent">your</span> way
             </h3>
             <p className="sc-body mt-6 text-lg text-cream/65 max-w-md leading-[1.6]">
               Apple Pay, credit card, debit, bank transfer. Use whatever works
               for you — and crypto is next.
             </p>
+
+            <div className="sc-body mt-10 pt-8 border-t border-cream/10 max-w-md">
+              <div className="flex items-baseline gap-4">
+                <span
+                  className="font-grotesk font-bold text-accent tracking-[-0.04em] leading-none"
+                  style={{ fontSize: "clamp(3.5rem, 7vw, 5.5rem)" }}
+                >
+                  1.5%
+                </span>
+                <div className="flex flex-col">
+                  <span className="font-grotesk font-bold text-cream text-[1.15rem] leading-tight">
+                    fee per settlement
+                  </span>
+                  <span className="text-[0.72rem] uppercase tracking-[0.22em] text-cream/55 font-semibold mt-1">
+                    No per-person fees. No hidden charges.
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
           <div className="lg:col-span-7 relative z-10 lg:mt-[88px]">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -162,10 +182,10 @@ export function Showcase() {
       </div>
 
       {/* BLOCK 2 — FULL-BLEED BOLD COLOR, NO SCREEN */}
-      <div data-reverse="true" className="sc-block relative w-full pt-12 lg:pt-20 pb-24 lg:pb-32">
+      <div data-reverse="true" className="sc-block relative w-full pt-0 lg:pt-4 pb-24 lg:pb-32">
         <div className="sc-image relative w-full">
           <div
-            className="sc-full-image relative mx-auto w-[88vw] max-w-[1360px] min-h-[520px] md:min-h-0 md:aspect-[16/7.2] rounded-[1.4rem] overflow-hidden bg-cream"
+            className="sc-full-image relative mx-auto w-[87vw] max-w-[1300px] min-h-[500px] md:min-h-[540px] rounded-[1.4rem] overflow-hidden bg-cream"
             style={{
               backgroundImage:
                 "radial-gradient(circle at 85% 120%, rgba(255,124,97,0.28), transparent 55%), radial-gradient(circle at 10% -20%, rgba(255,124,97,0.22), transparent 55%)",
@@ -192,15 +212,15 @@ export function Showcase() {
               settled.
             </div>
 
-            <div className="relative h-full min-h-[inherit] flex items-center justify-center md:justify-start py-10 md:py-0">
-              <div className="w-full px-6 md:pl-[3vw] md:pr-[4vw] lg:pl-[4vw] md:max-w-[980px] relative z-10 text-center md:text-left flex flex-col items-center md:items-start">
+            <div className="relative h-full min-h-[inherit] flex items-start justify-center md:justify-start pt-10 md:pt-14 lg:pt-20 pb-10 md:pb-16">
+              <div className="w-full px-8 md:pl-[5.5vw] md:pr-[5vw] lg:pl-[6vw] lg:pr-[5vw] md:max-w-[920px] relative z-10 text-center md:text-left flex flex-col items-center md:items-start">
                 <h3 className="sc-heading font-grotesk font-bold text-ink text-title md:text-display leading-[1.02] md:leading-[0.92]">
                   No one fronts <span className="italic">the bill.</span>
                 </h3>
                 <p className="sc-body mt-5 md:mt-6 text-base md:text-lg text-ink/75 max-w-xl mx-auto md:mx-0 leading-[1.6]">
                   Everyone pays their share up front. Funds are held safely
                   until the tab is complete, then a one-time virtual card
-                  appears on the host's phone — one tap at the POS and the
+                  appears on the host&apos;s phone — one tap at the POS and the
                   restaurant is paid in a single transaction.
                 </p>
 
@@ -226,113 +246,6 @@ export function Showcase() {
               </div>
             </div>
 
-          </div>
-        </div>
-      </div>
-
-      {/* BLOCK 3 — text left, phone right + QR */}
-      <div
-        data-reverse="false"
-        className="sc-block relative mx-auto max-w-[1440px] px-6 lg:px-10 pb-32 lg:pb-40"
-      >
-        <div className="relative grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 items-center">
-          <div className="lg:col-span-6 relative z-10 order-2 lg:order-1">
-            <div className="sc-eyebrow eyebrow text-cream/50">Share</div>
-            <h3 className="sc-heading mt-5 font-grotesk font-bold text-cream text-section">
-              Invite your <span className="italic text-accent">friends.</span>
-            </h3>
-            <p className="sc-body mt-6 text-lg text-cream/65 max-w-md leading-[1.6]">
-              Every table gets a unique QR code. Every friend gets their own
-              friend code. Scan, join, split — no app install required for your
-              guests.
-            </p>
-            <div className="mt-10 flex items-start gap-6">
-              <div className="relative flex-shrink-0">
-                <div className="w-36 h-36 rounded-2xl bg-cream p-3 shadow-[0_24px_60px_-20px_rgba(255,124,97,0.35)]">
-                  <FakeQR />
-                </div>
-                <span className="absolute -top-3 -right-3 bg-accent text-white text-[0.58rem] uppercase tracking-[0.22em] font-bold px-2.5 py-1 rounded-full rotate-[6deg] shadow-md">
-                  Table 07
-                </span>
-              </div>
-              <div className="flex-1 text-sm text-cream/65 leading-snug">
-                <div className="uppercase tracking-[0.22em] text-[0.62rem] font-bold text-accent mb-2">
-                  Your friend code
-                </div>
-                <div className="font-grotesk font-bold text-cream text-[1.8rem] tracking-[-0.02em] leading-none">
-                  48C2
-                </div>
-                <p className="mt-3 text-cream/50 text-[0.85rem] max-w-[220px]">
-                  Share it, and anyone can split with you in one tap.
-                </p>
-              </div>
-            </div>
-          </div>
-          <div className="sc-image lg:col-span-6 lg:col-start-7 relative z-10 order-1 lg:order-2">
-            <div className="relative mx-auto w-full max-w-[460px] h-[520px] flex items-center justify-center">
-              <div
-                className="absolute -inset-10 blur-3xl opacity-60 -z-10"
-                style={{
-                  background:
-                    "radial-gradient(circle at 50% 30%, rgba(255,124,97,0.55), transparent 65%)",
-                }}
-              />
-
-              {/* Dashed connection line between the two phones */}
-              <svg
-                aria-hidden
-                className="absolute inset-0 w-full h-full pointer-events-none z-0"
-                viewBox="0 0 460 520"
-                fill="none"
-              >
-                <path
-                  d="M 140 300 C 200 360, 260 360, 320 300"
-                  stroke="rgb(255,124,97)"
-                  strokeWidth="1.6"
-                  strokeDasharray="4 6"
-                  strokeLinecap="round"
-                  opacity="0.55"
-                />
-              </svg>
-
-              {(["friends", "groups"] as const).map((v, i) => {
-                const isFront = frontPhone === v;
-                const baseRot = v === "friends" ? -9 : 8;
-                const activeRot = v === "friends" ? -4 : 4;
-                return (
-                  <button
-                    key={v}
-                    type="button"
-                    onClick={() => setFrontPhone(v)}
-                    aria-label={
-                      isFront ? `${v} screen in front` : `Bring ${v} screen to front`
-                    }
-                    className="absolute cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded-[1.75rem] transition-[transform,opacity,filter] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]"
-                    style={{
-                      width: isFront ? "58%" : "50%",
-                      left: v === "friends" ? "6%" : undefined,
-                      right: v === "groups" ? "6%" : undefined,
-                      top: isFront ? "8%" : "18%",
-                      transform: `rotate(${isFront ? activeRot : baseRot}deg)`,
-                      opacity: isFront ? 1 : 0.85,
-                      filter: isFront ? "none" : "saturate(0.85)",
-                      zIndex: isFront ? 20 : 5,
-                    }}
-                  >
-                    <Phone variant={v} />
-                  </button>
-                );
-              })}
-
-              {/* Floating "friend request accepted" pill */}
-              <span
-                aria-hidden
-                className="absolute top-[4%] right-[4%] z-30 bg-ink text-cream rounded-full px-3.5 py-1.5 text-[0.62rem] uppercase tracking-[0.22em] font-bold shadow-[0_10px_30px_-10px_rgba(0,0,0,0.6)] flex items-center gap-2 rotate-[6deg]"
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-                Friend joined
-              </span>
-            </div>
           </div>
         </div>
       </div>

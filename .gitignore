@@ -5,3 +5,7 @@ node_modules
 *.log
 .DS_Store
 .claude
+
+.env*.local
+.vercel
+tsconfig.tsbuildinfo

@@ -14,14 +14,27 @@ export default function AppleIcon() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
+          background: "transparent",
         }}
       >
-        <img
-          src="https://framerusercontent.com/images/8ziC1H7zLZIh36Br3ZlUaplUabg.png"
-          width="180"
-          height="180"
-          alt=""
-        />
+        <div
+          style={{
+            width: 180,
+            height: 180,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "#FFFFFF",
+            borderRadius: 40,
+          }}
+        >
+          <img
+            src="https://framerusercontent.com/images/8ziC1H7zLZIh36Br3ZlUaplUabg.png"
+            width="132"
+            height="132"
+            alt=""
+          />
+        </div>
       </div>
     ),
     size,

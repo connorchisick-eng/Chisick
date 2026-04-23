@@ -7,7 +7,7 @@ import { SplitText } from "@/components/SplitText";
 const ITEMS = [
   {
     q: "How does Tabby split the bill?",
-    a: "One person scans the receipt. Everyone on the tab claims the items they ordered. Shared plates can be split evenly or by custom amounts among whoever claims them. Each person selects a tip, reviews their total, and pays their share. All funds are held in escrow until everyone has paid. Once the full amount is collected, a one-time virtual card appears on the tab initiator's phone. They tap it to the POS terminal and pay the restaurant in one clean transaction. No one fronts the bill. No chasing people on Venmo. Done before the server comes back.",
+    a: "One person scans the receipt. Everyone on the tab claims the items they ordered. Shared plates can be split evenly or by custom amounts among whoever claims them. Each person selects a tip, reviews their total, and pays their share. All funds are held in escrow until everyone has paid. Once the full amount is collected, a one-time virtual card appears on the tab initiator's phone. They tap it to the POS terminal and pay the restaurant in one clean transaction. No one fronts the bill. No chasing payments after the meal. Done before the server comes back.",
   },
   {
     q: "Do all my friends need the app?",
@@ -23,7 +23,11 @@ const ITEMS = [
   },
   {
     q: "How much does Tabby cost?",
-    a: "Tabby is free to download and free to use. A small processing fee of 1.5% is applied to each transaction to cover payment processing costs. On a $30 dinner, that's 45 cents.",
+    a: "Tabby charges a flat 1.5% fee per settlement — no per-person fees, no hidden charges. You only pay when a tab is settled. Join the waitlist and you'll get early access to every feature when we launch.",
+  },
+  {
+    q: "Is Tabby available outside the US?",
+    a: "Not yet. We're launching in the United States first so we can nail the experience with one banking infrastructure. International rollout is planned for later — join the waitlist and we'll let you know the moment Tabby lands in your country.",
   },
 ];
 
@@ -66,7 +70,7 @@ export function FAQ() {
   }, [open]);
 
   return (
-    <section id="faq" ref={ref} className="relative bg-white">
+    <section id="faq" ref={ref} className="relative bg-surface">
       <div className="mx-auto max-w-[980px] px-6 lg:px-10 pt-24 lg:pt-32 pb-24 lg:pb-32">
         {/* Section header — large orange display heading */}
         <div className="text-center">
@@ -90,7 +94,7 @@ export function FAQ() {
                   aria-expanded={isOpen}
                 >
                   <span className="flex items-start gap-5">
-                    <span className="text-xs text-ink/40 font-bold tracking-[0.22em] pt-2 hidden sm:inline">
+                    <span className="text-xs text-body/40 font-bold tracking-[0.22em] pt-2 hidden sm:inline">
                       0{i + 1}
                     </span>
                     <span>{item.q}</span>
@@ -115,13 +119,13 @@ export function FAQ() {
         {/* Still have questions? */}
         <div className="mt-16 lg:mt-20 text-center">
           <div className="inline-flex flex-col items-center gap-3">
-            <span className="eyebrow text-ink/40">Can't find it?</span>
-            <p className="font-grotesk font-bold text-ink text-3xl md:text-4xl leading-[1.1] tracking-[-0.02em] max-w-md">
+            <span className="eyebrow text-body/40">Can't find it?</span>
+            <p className="font-grotesk font-bold text-body text-3xl md:text-4xl leading-[1.1] tracking-[-0.02em] max-w-md">
               Still have questions?
             </p>
-            <p className="text-ink/60 text-base max-w-sm">
+            <p className="text-body/60 text-base max-w-sm">
               Tap{" "}
-              <span className="font-semibold text-ink">Ask Tabby</span> in the
+              <span className="font-semibold text-body">Ask Tabby</span> in the
               corner — our AI answers in seconds.
             </p>
           </div>

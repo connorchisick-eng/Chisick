@@ -3,7 +3,12 @@ import { clsx } from "clsx";
 import { useEffect, useRef } from "react";
 import Image from "next/image";
 import type { ScreenVariant } from "./Screen";
+import { Screen } from "./Screen";
 import { TALL_VARIANTS } from "@/lib/images";
+
+// Variants rendered as first-class React components instead of PNGs.
+// Empty for now — the Figma-rendered PNG for "tip" is the source of truth.
+const CODED_VARIANTS = new Set<ScreenVariant>();
 
 type Props = {
   variant: ScreenVariant;
@@ -64,7 +69,11 @@ export function Phone({ variant, className, shadow = true, tilt = false }: Props
       )}
       style={tilt ? { transformStyle: "preserve-3d" } : undefined}
     >
-      {isTall ? (
+      {CODED_VARIANTS.has(variant) ? (
+        <div className="absolute inset-0">
+          <Screen variant={variant} />
+        </div>
+      ) : isTall ? (
         // Tall PNG (e.g. smart-receipts is 1179×3462) — wrap in an
         // overflow-hidden frame and slow-scroll the image so the bottom
         // becomes visible on a loop instead of getting cropped.

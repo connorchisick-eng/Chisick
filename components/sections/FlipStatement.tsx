@@ -73,7 +73,7 @@ export function FlipStatement({ variant = "light", interval = 2200 }: Props) {
       ref={ref}
       className={clsx(
         "relative overflow-hidden",
-        dark ? "bg-ink text-cream" : "bg-cream text-ink",
+        dark ? "bg-ink text-cream" : "bg-surface-alt text-body",
       )}
     >
       {dark && <div className="noise" />}
@@ -84,40 +84,10 @@ export function FlipStatement({ variant = "light", interval = 2200 }: Props) {
           dark ? "pt-10 lg:pt-14 pb-24 lg:pb-32" : "py-24 lg:py-32",
         )}
       >
-        <div className="flip-meta relative mb-12 lg:mb-16 flex items-center justify-center">
-          <span
-            className={clsx(
-              "hidden sm:block h-px flex-1 max-w-[120px] lg:max-w-[200px]",
-              dark ? "bg-cream/25" : "bg-ink/20",
-            )}
-          />
-          <div
-            className={clsx(
-              "relative inline-flex items-center px-5 sm:px-6 py-2 sm:py-2.5 border-y-2 mx-0 sm:mx-6",
-              dark ? "border-cream/30" : "border-ink/25",
-            )}
-          >
-            <span
-              className={clsx(
-                "font-grotesk text-[0.6rem] sm:text-[0.72rem] uppercase tracking-[0.32em] font-bold whitespace-nowrap",
-                dark ? "text-cream/90" : "text-ink/80",
-              )}
-            >
-              A public service announcement
-            </span>
-          </div>
-          <span
-            className={clsx(
-              "hidden sm:block h-px flex-1 max-w-[120px] lg:max-w-[200px]",
-              dark ? "bg-cream/25" : "bg-ink/20",
-            )}
-          />
-        </div>
-
         <h2
           className={clsx(
-            "font-grotesk font-bold leading-[1.25]",
-            dark ? "text-cream" : "text-ink",
+            "font-grotesk font-bold leading-[1.25] text-center mx-auto max-w-[18ch]",
+            dark ? "text-cream" : "text-body",
           )}
           style={{ fontSize: "clamp(2.5rem, 7.2vw, 7.2rem)" }}
         >
@@ -132,7 +102,7 @@ export function FlipStatement({ variant = "light", interval = 2200 }: Props) {
             <span
               className={clsx(
                 "italic font-medium",
-                dark ? "text-cream/70" : "text-ink/80",
+                dark ? "text-cream/70" : "text-body/80",
               )}
             >
               <WordFlip words={HUMBLE} index={idx} />

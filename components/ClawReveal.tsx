@@ -80,7 +80,7 @@ export function ClawReveal() {
       <div className="relative z-10 text-center">
         <span
           ref={line1Ref}
-          className="block font-grotesk font-bold text-ink text-hero leading-[0.9]"
+          className="block font-grotesk font-bold text-body text-hero leading-[0.9]"
           style={{ opacity: 0, transform: "translateY(16px)" }}
         >
           Enjoy the meal,

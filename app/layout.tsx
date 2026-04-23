@@ -6,6 +6,7 @@ import { Footer } from "@/components/Footer";
 import { Ready } from "@/components/Ready";
 import { HelpAgent } from "@/components/HelpAgent";
 import { HashScroller } from "@/components/HashScroller";
+import { PostHogProvider } from "@/components/PostHogProvider";
 
 export const metadata: Metadata = {
   title: "Tabby — Enjoy the meal, not the math.",
@@ -28,13 +29,15 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <Ready />
-        <SmoothScroll />
-        <HashScroller />
-        <Nav />
-        {children}
-        <Footer />
-        <HelpAgent />
+        <PostHogProvider>
+          <Ready />
+          <SmoothScroll />
+          <HashScroller />
+          <Nav />
+          {children}
+          <Footer />
+          <HelpAgent />
+        </PostHogProvider>
       </body>
     </html>
   );

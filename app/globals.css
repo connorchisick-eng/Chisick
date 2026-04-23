@@ -11,6 +11,13 @@
   --ink: 14, 14, 14;
   --charcoal: 26, 26, 26;
   --muted: 117, 132, 125;
+
+  /* Theme-aware tokens — LIGHT */
+  --surface: 255 255 255;         /* primary page bg (was bg-white) */
+  --surface-alt: 248 244 240;     /* secondary panel bg (was bg-cream) */
+  --text-primary: 14 14 14;       /* primary text (was text-ink) */
+  --line: 14 14 14;               /* borders, dividers (use with alpha) */
+  --nav-bg: 255, 255, 255;        /* nav backdrop when scrolled */
 }
 
 * {
@@ -20,10 +27,12 @@
 
 html,
 body {
-  background: #fff;
-  color: rgb(var(--ink));
+  background: rgb(var(--surface));
+  color: rgb(var(--text-primary));
   font-family: "Cabinet Grotesk", system-ui, sans-serif;
   font-feature-settings: "ss01", "ss02";
+  transition: background-color 0.5s cubic-bezier(0.22, 1, 0.36, 1),
+    color 0.5s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 ::selection {
@@ -129,26 +138,24 @@ html.lenis body { height: auto; }
   display: inline-flex;
   align-items: center;
   gap: 0.6rem;
-  color: rgb(var(--ink));
+  color: rgb(var(--text-primary));
   font-weight: 500;
-  /* vertical padding matches btn-primary (1.05rem) — 1px less to
-     account for ghost's 1px border so outer height is identical */
   padding: calc(1.05rem - 1px) 1.9rem;
   border-radius: 999px;
-  border: 1px solid rgba(14,14,14,0.14);
+  border: 1px solid rgb(var(--line) / 0.14);
   transition: background .3s ease, color .3s ease, border-color .3s ease;
 }
 .btn-ghost:hover {
-  background: rgb(var(--ink));
-  color: #fff;
-  border-color: rgb(var(--ink));
+  background: rgb(var(--text-primary));
+  color: rgb(var(--surface));
+  border-color: rgb(var(--text-primary));
 }
 
 .btn-primary:focus-visible,
 .btn-ghost:focus-visible {
   outline: none;
   box-shadow:
-    0 0 0 3px rgba(var(--cream), 1),
+    0 0 0 3px rgb(var(--surface)),
     0 0 0 5px rgb(var(--accent));
 }
 
@@ -206,6 +213,34 @@ html.lenis body { height: auto; }
 /* no-scrollbar */
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { scrollbar-width: none; }
+
+/* Demo phone — width-only sizing so aspect-[9/19.5] drives height.
+   Pick the smaller of vertical-bound or horizontal-bound width so the
+   phone always fits both axes. Reserve enough vertical room for the
+   narrative panel above (which wraps on mobile) + page padding. */
+.demo-phone-shell {
+  /* mobile reserve ~160px (narrative + dots + padding). Tighter than
+     before so the phone takes a bit more of the viewport. */
+  width: min(
+    calc((100svh - 160px) * 9 / 19.5),
+    calc(100vw - 32px),
+    420px
+  );
+}
+@media (min-width: 768px) {
+  .demo-phone-shell {
+    width: min(
+      calc((100svh - 80px) * 9 / 19.5),
+      calc(100vw - 64px),
+      554px
+    );
+  }
+}
+
+/* hide scrollbars globally (page + all overflow containers) while
+   keeping scroll behavior intact */
+*::-webkit-scrollbar { display: none; width: 0; height: 0; }
+html, body { scrollbar-width: none; -ms-overflow-style: none; }
 
 /* legal page prose */
 .legal-prose { font-size: 1rem; line-height: 1.7; }
@@ -266,9 +301,46 @@ html.lenis body { height: auto; }
   .animate-stamp-spin { animation: none; }
 }
 
+/* CTA stamp pulse — subtle glow ring so the stamp reads as interactive */
+@keyframes stamp-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 0 rgba(255, 124, 97, 0.0),
+      0 12px 36px -10px rgba(255, 124, 97, 0.35);
+  }
+  50% {
+    box-shadow:
+      0 0 0 14px rgba(255, 124, 97, 0),
+      0 18px 50px -10px rgba(255, 124, 97, 0.55);
+  }
+}
+.animate-stamp-pulse {
+  animation: stamp-pulse 2.6s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+.animate-stamp-pulse:hover { animation-play-state: paused; }
+
+/* "click here" label bob + arrow draw — draws attention without being loud */
+@keyframes click-bob {
+  0%, 100% { transform: translateY(0) rotate(-6deg); opacity: 0.9; }
+  50%      { transform: translateY(-4px) rotate(-4deg); opacity: 1; }
+}
+.animate-click-bob { animation: click-bob 1.8s ease-in-out infinite; }
+
+@keyframes click-arrow {
+  0%, 100% { transform: translateX(0); }
+  50%      { transform: translateX(4px); }
+}
+.animate-click-arrow { animation: click-arrow 1.8s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-stamp-pulse,
+  .animate-click-bob,
+  .animate-click-arrow { animation: none; }
+}
+
 /* accordion */
-.acc-item { border-top: 1px solid rgba(14,14,14,0.12); }
-.acc-item:last-child { border-bottom: 1px solid rgba(14,14,14,0.12); }
+.acc-item { border-top: 1px solid rgb(var(--line) / 0.12); }
+.acc-item:last-child { border-bottom: 1px solid rgb(var(--line) / 0.12); }
 .acc-head {
   display: flex;
   width: 100%;
@@ -280,7 +352,7 @@ html.lenis body { height: auto; }
   font-size: clamp(1.2rem, 2.1vw, 1.7rem);
   font-weight: 500;
   letter-spacing: -0.015em;
-  color: rgb(var(--ink));
+  color: rgb(var(--text-primary));
   cursor: pointer;
 }
 .acc-head:hover { color: rgb(var(--accent)); }
@@ -290,7 +362,7 @@ html.lenis body { height: auto; }
   height: 32px;
   flex-shrink: 0;
   border-radius: 999px;
-  background: rgb(var(--ink));
+  background: rgb(var(--text-primary));
   transition: background .35s ease, transform .5s cubic-bezier(.22,1,.36,1);
 }
 .acc-icon::before, .acc-icon::after {
@@ -298,7 +370,7 @@ html.lenis body { height: auto; }
   position: absolute;
   left: 50%;
   top: 50%;
-  background: #fff;
+  background: rgb(var(--surface));
   transition: transform .5s cubic-bezier(.22,1,.36,1);
 }
 .acc-icon::before { width: 12px; height: 2px; transform: translate(-50%,-50%); }
@@ -311,7 +383,7 @@ html.lenis body { height: auto; }
 .acc-body { overflow: hidden; height: 0; will-change: height; }
 .acc-body-inner {
   padding: 0 0 1.85rem 0;
-  color: rgba(14,14,14,0.65);
+  color: rgb(var(--text-primary) / 0.65);
   max-width: 640px;
   font-size: 1.05rem;
   line-height: 1.65;
@@ -355,7 +427,7 @@ html.lenis body { height: auto; }
   text-transform: uppercase;
   font-size: 0.7rem;
   font-weight: 600;
-  color: rgba(14,14,14,0.5);
+  color: rgb(var(--text-primary) / 0.5);
 }
 
 /* marquee / ticker */
@@ -494,12 +566,12 @@ body:not(.ready) [data-fade-in] { opacity: 0; }
    bobs subtly, ducks back down. Image is top-anchored, translateY moves it down. */
 @keyframes cat-peek {
   0%, 14%   { transform: translateY(100%); }  /* fully hidden below window */
-  22%       { transform: translateY(60%) rotate(-2deg); }  /* ears emerge */
-  30%       { transform: translateY(30%) rotate(1deg); }   /* eyes up */
-  38%       { transform: translateY(18%) rotate(-1deg); }  /* full head */
-  46%       { transform: translateY(22%) rotate(2deg); }   /* small bob */
-  54%       { transform: translateY(14%) rotate(-1deg); }  /* bob back */
-  64%       { transform: translateY(40%) rotate(1deg); }   /* ducking */
+  22%       { transform: translateY(64%) rotate(-2deg); }  /* ears emerge */
+  30%       { transform: translateY(34%) rotate(1deg); }   /* eyes up */
+  38%       { transform: translateY(22%) rotate(-1deg); }  /* full head */
+  46%       { transform: translateY(26%) rotate(2deg); }   /* small bob */
+  54%       { transform: translateY(18%) rotate(-1deg); }  /* bob back */
+  64%       { transform: translateY(44%) rotate(1deg); }   /* ducking */
   74%, 100% { transform: translateY(100%); }  /* hidden, waits for loop */
 }
 .animate-cat-peek {
@@ -539,9 +611,13 @@ body:not(.ready) [data-fade-in] { opacity: 0; }
    rendered at width:100% height:auto inside an overflow-hidden phone-card;
    -26% roughly equals the overflow for a 2.94:1 image in a 2.17:1 frame,
    which reveals the bottom content without cropping anything permanently. */
+/* Only animates while the card is hovered — keeps the hero still by default
+   so the page doesn't feel like it's moving on its own. */
 .phone-tall-scroll {
-  animation: phone-tall-scroll 11s cubic-bezier(0.65, 0, 0.35, 1) infinite;
   will-change: transform;
+}
+.phone-card:hover .phone-tall-scroll {
+  animation: phone-tall-scroll 11s cubic-bezier(0.65, 0, 0.35, 1) infinite;
 }
 @keyframes phone-tall-scroll {
   0%, 12%   { transform: translateY(0); }

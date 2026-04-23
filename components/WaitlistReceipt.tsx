@@ -30,34 +30,41 @@ function formatPhone(raw: string) {
 export function WaitlistReceipt() {
   const rootRef = useRef<HTMLDivElement>(null);
   const paperRef = useRef<HTMLDivElement>(null);
-  const stampRef = useRef<HTMLDivElement>(null);
 
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [status, setStatus] = useState<
     "idle" | "loading" | "done" | "error"
   >("idle");
   const [signing, setSigning] = useState(false);
 
-  const digits = phone.replace(/\D/g, "").length;
-  const valid = digits >= 10;
+  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+  const phoneDigits = phone.replace(/\D/g, "").length;
+  const phoneComplete = phoneDigits >= 10;
+  // Phone is optional — the button's enabled state tracks email only.
+  // A partial phone entry gets dropped at submit time instead of blocking.
+  const valid = emailValid;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!valid || status === "loading") return;
     setStatus("loading");
+    const phoneToSend = phoneComplete ? phone : "";
     try {
       const res = await fetch("/api/waitlist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, phone }),
+        body: JSON.stringify({ name, email, phone: phoneToSend }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      // Play signature animation first, then swap to the confirmation block
-      // so the user watches the receipt get signed before the stamp hits.
+      // Let the signature fully draw, then crossfade form → confirmation
+      // while the ink dissolves in the same beat — no visible gap.
       setSigning(true);
-      setTimeout(() => setStatus("done"), 1800);
-      setTimeout(() => setSigning(false), 3200);
+      setTimeout(() => {
+        setStatus("done");
+        setSigning(false);
+      }, 2000);
     } catch (err) {
       console.error("[waitlist] submission failed", err);
       setStatus("error");
@@ -85,24 +92,6 @@ export function WaitlistReceipt() {
     }, rootRef);
     return () => ctx.revert();
   }, []);
-
-  // PAID stamp slams down a beat after the confirmation readout arrives,
-  // so the sequence reads: signature → confirmation → stamp.
-  useEffect(() => {
-    if (status !== "done" || !stampRef.current) return;
-    gsap.fromTo(
-      stampRef.current,
-      { opacity: 0, scale: 2.4, rotate: -40 },
-      {
-        opacity: 1,
-        scale: 1,
-        rotate: -14,
-        duration: 0.5,
-        ease: "power3.out",
-        delay: 0.55,
-      },
-    );
-  }, [status]);
 
   return (
     <div
@@ -317,7 +306,7 @@ export function WaitlistReceipt() {
                   animate={{ opacity: 1 }}
                   exit={{
                     opacity: 0,
-                    transition: { duration: 0.7, ease: [0.4, 0, 0.2, 1] },
+                    transition: { duration: 1.1, ease: [0.22, 1, 0.36, 1] },
                   }}
                   transition={{ duration: 0.2 }}
                 >
@@ -358,18 +347,18 @@ export function WaitlistReceipt() {
                 </motion.svg>
               )}
             </AnimatePresence>
-            <AnimatePresence mode="wait" initial={false}>
+            <AnimatePresence mode="popLayout" initial={false}>
               {status !== "done" ? (
                 <motion.div
                   key="form"
                   initial={{ opacity: 0, y: 8 }}
                   animate={{
-                    opacity: signing ? 0.35 : 1,
+                    opacity: signing ? 0.28 : 1,
                     y: 0,
-                    filter: signing ? "blur(0.4px)" : "blur(0px)",
+                    filter: signing ? "blur(1px)" : "blur(0px)",
                   }}
-                  exit={{ opacity: 0, y: -6 }}
-                  transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+                  exit={{ opacity: 0, y: -4, filter: "blur(3px)" }}
+                  transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
                   className="space-y-3"
                 >
                   <Field
@@ -381,13 +370,21 @@ export function WaitlistReceipt() {
                     type="text"
                   />
                   <Field
+                    label="Email"
+                    value={email}
+                    onChange={setEmail}
+                    placeholder="you@example.com"
+                    autoComplete="email"
+                    type="email"
+                    required
+                  />
+                  <Field
                     label="Phone"
                     value={phone}
                     onChange={(v) => setPhone(formatPhone(v))}
-                    placeholder="(555) 123-4567"
+                    placeholder="(555) 123-4567 · optional"
                     autoComplete="tel"
                     type="tel"
-                    required
                   />
 
                   {status === "error" && (
@@ -442,12 +439,12 @@ export function WaitlistReceipt() {
               ) : (
                 <motion.div
                   key="done"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
+                  initial={{ opacity: 0, y: 6, filter: "blur(4px)" }}
+                  animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
                   transition={{
-                    duration: 0.7,
+                    duration: 0.85,
                     ease: [0.22, 1, 0.36, 1],
-                    delay: 0.15,
+                    delay: 0.1,
                   }}
                   className="text-[0.74rem] leading-[1.7]"
                 >
@@ -458,8 +455,9 @@ export function WaitlistReceipt() {
                     label="Name"
                     value={(name.trim() || "guest").toUpperCase()}
                   />
-                  <ReadoutLine label="Phone" value={phone} />
-                  <ReadoutLine label="Text" value="Q4 · 2026" />
+                  <ReadoutLine label="Email" value={email.trim()} />
+                  {phoneComplete && <ReadoutLine label="Phone" value={phone} />}
+                  <ReadoutLine label="Notify" value="Q4 · 2026" />
                   <div className="mt-3 text-[0.62rem] uppercase tracking-[0.28em] opacity-55">
                     * enjoy the meal — not the math *
                   </div>
@@ -482,27 +480,6 @@ export function WaitlistReceipt() {
             ))}
           </div>
 
-          {/* PAID · JOINED stamp — only shows after submit */}
-          {status === "done" && (
-            <div
-              ref={stampRef}
-              aria-hidden
-              className="absolute right-5 top-[34%] pointer-events-none"
-              style={{ opacity: 0 }}
-            >
-              <div
-                className="border-[2.5px] rounded px-2.5 py-1 font-bold text-[0.7rem] tracking-[0.25em]"
-                style={{
-                  borderColor: "rgba(255,124,97,0.9)",
-                  color: "rgba(255,124,97,0.9)",
-                  transform: "rotate(-14deg)",
-                  boxShadow: "0 0 0 3px rgba(255,124,97,0.08)",
-                }}
-              >
-                JOINED · $14
-              </div>
-            </div>
-          )}
         </form>
       </div>
     </div>
@@ -554,7 +531,7 @@ function Field({
   value: string;
   onChange: (v: string) => void;
   placeholder: string;
-  type: "text" | "tel";
+  type: "text" | "tel" | "email";
   autoComplete?: string;
   required?: boolean;
 }) {
@@ -567,7 +544,9 @@ function Field({
         <span className="flex-1 relative">
           <input
             type={type}
-            inputMode={type === "tel" ? "tel" : undefined}
+            inputMode={
+              type === "tel" ? "tel" : type === "email" ? "email" : undefined
+            }
             autoComplete={autoComplete}
             required={required}
             value={value}

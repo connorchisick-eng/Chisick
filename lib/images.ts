@@ -13,21 +13,20 @@ import type { ScreenVariant } from "@/components/Screen";
  */
 export const PHONE_VARIANTS: ScreenVariant[] = [
   "welcome",         // 1.  Open the app
-  "dashboard",       // 2.  Home — open tab + friends + history
-  "friends",         // 3.  Groups — friends list
-  "groups",          // 4.  Groups — recurring squads
-  "scan",            // 5.  Create tab — scan the receipt
-  "claim",           // 6.  Select items
-  "claim-expanded",  // 7.  Select items — expanded row
-  "split-amount",    // 8.  Split a shared item
-  "add-split",       // 9.  Add a split amount
-  "tip",             // 10. Add tip
-  "settle",          // 11. Pick a payment method
-  "progress",        // 12. Tab progress — watch the table settle
-  "card",            // 13. Virtual card (tap to pay)
-  "confirmation",    // 14. Confirmation — itemized totals
-  "smart-receipts",  // 15. PRO · Insights / dining patterns
-  "sugarfish",       // 16. PRO · Restaurant detail (Sugarfish)
+  "friends",         // 2.  Groups — friends list
+  "groups",          // 3.  Groups — recurring squads
+  "scan",            // 4.  Create tab — scan the receipt
+  "claim",           // 5.  Select items
+  "claim-expanded",  // 6.  Select items — expanded row
+  "split-amount",    // 7.  Split a shared item
+  "add-split",       // 8.  Add a split amount
+  "tip",             // 9.  Add tip
+  "settle",          // 10. Pick a payment method
+  "progress",        // 11. Tab progress — watch the table settle
+  "card",            // 12. Virtual card (tap to pay)
+  "confirmation",    // 13. Confirmation — itemized totals
+  "smart-receipts",  // 14. PRO · Insights / dining patterns
+  "sugarfish",       // 15. PRO · Restaurant detail (Sugarfish)
 ];
 
 /**

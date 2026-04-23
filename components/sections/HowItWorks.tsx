@@ -24,7 +24,7 @@ const STEPS: { num: string; word: string; title: string; body: string; variant: 
     num: "03",
     word: "SETTLE.",
     title: "Settle up",
-    body: "One tap to pay — Apple Pay, card, or bank transfer. No IOUs, no Venmo requests.",
+    body: "One tap to pay — Apple Pay, card, or bank transfer. No IOUs, no chasing payments.",
     variant: "progress",
   },
 ];
@@ -67,7 +67,7 @@ export function HowItWorks() {
       indicatorsRef.current.forEach((el, idx) => {
         if (!el) return;
         el.style.background =
-          idx === i ? "rgb(255, 124, 97)" : "rgba(14,14,14,0.15)";
+          idx === i ? "rgb(255, 124, 97)" : "rgb(var(--line) / 0.15)";
         el.style.width = idx === i ? "56px" : "18px";
       });
     };
@@ -154,10 +154,10 @@ export function HowItWorks() {
     <section
       id="how-it-works"
       ref={sectionRef}
-      className="relative bg-cream overflow-hidden"
+      className="relative bg-surface-alt overflow-hidden"
     >
       {/* progress bar */}
-      <div className="absolute top-0 left-0 right-0 h-[2px] bg-ink/10 z-10 overflow-hidden">
+      <div className="absolute top-0 left-0 right-0 h-[2px] bg-body/10 z-10 overflow-hidden">
         <div
           ref={progRef}
           className="absolute inset-0 bg-accent origin-left"
@@ -167,13 +167,13 @@ export function HowItWorks() {
 
       {/* Heading area — scrolls normally, gives breathing room above the pinned steps */}
       <div className="relative z-10 mx-auto max-w-[1440px] px-6 lg:px-16 pt-16 lg:pt-20 pb-6 lg:pb-8 text-center">
-        <div className="eyebrow text-ink/50 justify-center inline-flex">
+        <div className="eyebrow text-body/50 justify-center inline-flex">
           The method
         </div>
-        <h2 className="mt-4 font-grotesk font-bold text-ink text-display leading-[0.95]">
+        <h2 className="mt-4 font-grotesk font-bold text-body text-display leading-[0.95]">
           How it <span className="italic text-accent">works.</span>
         </h2>
-        <p className="mt-4 text-lg md:text-xl text-ink/60 max-w-md mx-auto leading-[1.55]">
+        <p className="mt-4 text-lg md:text-xl text-body/60 max-w-md mx-auto leading-[1.55]">
           Three steps. That's it.
         </p>
       </div>
@@ -186,10 +186,10 @@ export function HowItWorks() {
             {STEPS.map((step) => (
               <div
                 key={step.num}
-                className="snap-center shrink-0 w-[82vw] max-w-[380px] rounded-[1.5rem] bg-white border border-ink/10 shadow-[0_20px_40px_-24px_rgba(14,14,14,0.25)] p-6 flex flex-col items-start text-left"
+                className="snap-center shrink-0 w-[88vw] max-w-[440px] rounded-[1.5rem] bg-surface border border-line/10 shadow-[0_20px_40px_-24px_rgba(14,14,14,0.25)] p-6 flex flex-col items-start text-left"
               >
                 <div
-                  className="font-grotesk font-bold leading-none tracking-[-0.05em] text-ink"
+                  className="font-grotesk font-bold leading-none tracking-[-0.05em] text-body"
                   style={{ fontSize: "clamp(3rem, 14vw, 5rem)" }}
                 >
                   {step.num}
@@ -199,15 +199,15 @@ export function HowItWorks() {
                   Step / {step.num}
                 </div>
                 <h3
-                  className="mt-2 font-grotesk font-bold text-ink"
+                  className="mt-2 font-grotesk font-bold text-body"
                   style={{ fontSize: "clamp(1.6rem, 5.6vw, 2.25rem)", lineHeight: 1.04, letterSpacing: "-0.025em" }}
                 >
                   {step.title}
                 </h3>
-                <p className="mt-3 text-[0.98rem] text-ink/60 leading-[1.55]">
+                <p className="mt-3 text-[0.98rem] text-body/60 leading-[1.55]">
                   {step.body}
                 </p>
-                <div className="mt-5 mx-auto relative w-[48vw] max-w-[200px] aspect-[9/19.5]">
+                <div className="mt-5 mx-auto relative w-[72vw] max-w-[320px] aspect-[9/19.5]">
                   <div
                     aria-hidden
                     className="absolute -inset-6 rounded-full blur-3xl"
@@ -224,14 +224,14 @@ export function HowItWorks() {
             ))}
           </div>
         </div>
-        <div className="mt-6 flex items-center justify-center gap-2 text-[0.68rem] uppercase tracking-[0.28em] font-semibold text-ink/40">
+        <div className="mt-6 flex items-center justify-center gap-2 text-[0.68rem] uppercase tracking-[0.28em] font-semibold text-body/40">
           <span>← Swipe →</span>
         </div>
       </div>
 
       <div
         ref={pinRef}
-        className="hidden lg:flex relative lg:h-screen lg:min-h-[680px] items-start justify-center pt-[156px] pb-0"
+        className="hidden lg:flex relative lg:h-screen lg:min-h-[720px] items-start justify-center pt-[72px] pb-0"
       >
         {/* vertical label */}
         <div className="hidden lg:block absolute left-8 top-1/2 -translate-y-1/2 z-10">
@@ -241,10 +241,20 @@ export function HowItWorks() {
           <span className="vert">3 steps to zero</span>
         </div>
 
-        <div className="relative z-10 mx-auto max-w-[1120px] w-full px-6 lg:px-12">
-          <div className="flex flex-col lg:flex-row items-center justify-center gap-10 lg:gap-16">
+        <div className="relative z-10 w-full px-4 lg:px-8">
+          <div className="relative rounded-[2.25rem] bg-surface border border-line/10 shadow-[0_40px_80px_-32px_rgba(14,14,14,0.3)] px-10 py-14 md:px-16 md:py-16 lg:px-16 lg:py-12 xl:px-20 xl:py-14 overflow-hidden">
+            {/* subtle radial glow tying the card to the peach accent */}
+            <div
+              aria-hidden
+              className="pointer-events-none absolute -right-24 -top-24 w-[460px] h-[460px] rounded-full"
+              style={{
+                background:
+                  "radial-gradient(circle, rgba(255,124,97,0.14), transparent 65%)",
+              }}
+            />
+          <div className="relative flex flex-col lg:flex-row items-center justify-between gap-12 lg:gap-14 xl:gap-20">
             {/* Left text + giant number */}
-            <div className="w-full lg:w-[580px] relative lg:text-left">
+            <div className="w-full lg:flex-1 relative lg:text-left lg:max-w-[600px]">
               {/* Desktop-only absolute-positioned step number area. */}
               <div className="relative h-[11vw] min-h-[128px] lg:min-h-[160px] mb-3">
                 {STEPS.map((step, i) => (
@@ -253,7 +263,7 @@ export function HowItWorks() {
                     ref={(el) => {
                       numsRef.current[i] = el;
                     }}
-                    className="absolute bottom-0 left-0 font-grotesk font-bold leading-[1.05] tracking-[-0.05em] text-ink whitespace-nowrap"
+                    className="absolute bottom-0 left-0 font-grotesk font-bold leading-[1.05] tracking-[-0.05em] text-body whitespace-nowrap"
                     style={{ fontSize: "clamp(4.25rem, 8.4vw, 8.4rem)" }}
                   >
                     {step.num}
@@ -276,12 +286,12 @@ export function HowItWorks() {
                       Step / {step.num}
                     </div>
                     <h3
-                      className="font-grotesk font-bold text-ink"
+                      className="font-grotesk font-bold text-body"
                       style={{ fontSize: "clamp(2.5rem, 5.6vw, 5.6rem)", lineHeight: 1.02, letterSpacing: "-0.025em" }}
                     >
                       {step.title}
                     </h3>
-                    <p className="mt-5 text-[1.28rem] text-ink/60 max-w-[520px] leading-[1.55]">
+                    <p className="mt-5 text-[1.28rem] text-body/60 max-w-[520px] leading-[1.55]">
                       {step.body}
                     </p>
                   </div>
@@ -298,7 +308,7 @@ export function HowItWorks() {
                     className="h-[6px] rounded-full transition-all duration-500"
                     style={{
                       width: i === 0 ? 56 : 18,
-                      background: i === 0 ? "rgb(255,124,97)" : "rgba(14,14,14,0.15)",
+                      background: i === 0 ? "rgb(255,124,97)" : "rgb(var(--line) / 0.15)",
                     }}
                   />
                 ))}
@@ -309,7 +319,10 @@ export function HowItWorks() {
                 each phone renders inline under its own step text, not in
                 this slot, so we only mount the desktop stack here. */}
             <div className="hidden lg:flex relative flex-shrink-0 items-center justify-center">
-              <div className="relative w-[54vw] max-w-[300px] lg:max-w-[340px] aspect-[9/19.5]">
+              <div
+                className="relative aspect-[9/19.5]"
+                style={{ height: "min(calc(100vh - 200px), 880px)" }}
+              >
                 <div
                   aria-hidden
                   className="absolute -inset-10 rounded-full blur-3xl"
@@ -331,6 +344,7 @@ export function HowItWorks() {
                 ))}
               </div>
             </div>
+          </div>
           </div>
         </div>
       </div>

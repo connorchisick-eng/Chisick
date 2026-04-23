@@ -14,6 +14,10 @@ const config: Config = {
         ink: "rgb(14, 14, 14)",
         charcoal: "rgb(26, 26, 26)",
         muted: "rgb(117, 132, 125)",
+        surface: "rgb(var(--surface) / <alpha-value>)",
+        "surface-alt": "rgb(var(--surface-alt) / <alpha-value>)",
+        body: "rgb(var(--text-primary) / <alpha-value>)",
+        line: "rgb(var(--line) / <alpha-value>)",
       },
       fontFamily: {
         grotesk: ["'Cabinet Grotesk'", "system-ui", "sans-serif"],

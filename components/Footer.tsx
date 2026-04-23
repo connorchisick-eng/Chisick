@@ -4,7 +4,7 @@ import { LOGO } from "@/lib/images";
 
 export function Footer() {
   return (
-    <footer className="bg-ink text-cream relative overflow-hidden">
+    <footer data-nav-invert className="bg-ink text-cream relative overflow-hidden">
       <div className="noise" />
 
       <div className="relative mx-auto max-w-[1440px] px-6 lg:px-10 pt-10 lg:pt-12 pb-0 z-10">
@@ -28,8 +28,7 @@ export function Footer() {
               <h4 className="text-xs uppercase tracking-[0.22em] text-cream/40 font-semibold">Product</h4>
               <ul className="mt-5 space-y-3 text-cream/85">
                 <li><a href="/#how-it-works" className="ul-link ul-link-light">How it works</a></li>
-                <li><a href="/#features" className="ul-link ul-link-light">Features</a></li>
-                <li><a href="/#pricing" className="ul-link ul-link-light">Pricing</a></li>
+                <li><a href="/#features" className="ul-link ul-link-light">Payments</a></li>
                 <li><a href="/#faq" className="ul-link ul-link-light">FAQ</a></li>
                 <li><Link href="/waitlist" className="ul-link ul-link-light">Waitlist</Link></li>
               </ul>
