@@ -5,7 +5,7 @@ import { Footer } from "@/components/Footer";
 
 // Routes that render only the demo and should not show site-wide Nav/Footer
 // chrome. Everything else keeps the standard shell.
-const HIDE_CHROME = new Set<string>(["/"]);
+const HIDE_CHROME = new Set<string>(["/demo"]);
 
 export function SiteChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();

@@ -6,9 +6,11 @@ import {
   useRef,
   useState,
 } from "react";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { clsx } from "clsx";
 import { LOGO } from "@/lib/images";
+import { Arrow } from "@/components/icons";
 
 // ─────────────────────────────────────────────────────────────────
 // Tabby palette — locked to Figma tokens
@@ -41,11 +43,14 @@ type Screen =
   | "items"
   | "tip"
   | "payment"
-  | "card"
+  | "card"        // initiator (you) tap personal card → funds enter table pool
+  | "pool"        // initiator-perspective pool fills as friends contribute; mints virtual Tabby card
+  | "tabbyCard"   // initiator taps the minted one-time virtual Tabby card to merchant POS
   | "success"
   | "itemized"   // line-by-line breakdown of who paid what
   | "insights"
   | "sugarfish"
+  | "historyDetail"  // past-tab detail opened from dashboard history
   | "replay";    // end of demo — replay or join waitlist
 
 type Diner = "you" | "maya" | "sam" | "jake";
@@ -106,8 +111,8 @@ const NPC_CLAIMS: { diner: Diner; itemId: string; delayMs: number }[] = [
 const PAYMENT_METHODS: PaymentMethod[] = [
   { id: "boa", group: "bank", name: "Bank of America", meta: "Fees apply", logo: "BoA", logoBg: "#E31837" },
   { id: "chase", group: "bank", name: "Chase", meta: "Fees apply", logo: "Ch", logoBg: "#1A4079" },
-  { id: "visa", group: "card", name: "Visa — 7793", meta: "3% fee", logo: "VISA", logoBg: "#FFFFFF", logoColor: "#1A4079" },
-  { id: "amex", group: "card", name: "AmEx — 8732", meta: "3% fee", logo: "AmEx", logoBg: "#0066B2" },
+  { id: "visa", group: "card", name: "Visa — 7793", meta: "Fees apply", logo: "VISA", logoBg: "#FFFFFF", logoColor: "#1A4079" },
+  { id: "amex", group: "card", name: "AmEx — 8732", meta: "Fees apply", logo: "AmEx", logoBg: "#0066B2" },
   { id: "coinbase", group: "conn", name: "Coinbase", meta: "Fees apply", logo: "C", logoBg: "#2775CA" },
   { id: "paypal", group: "conn", name: "Paypal", meta: "Fees apply", logo: "P", logoBg: "#253B80" },
 ];
@@ -137,6 +142,9 @@ type State = {
   // an item, suppress re-firing the modal for THAT item. Other items
   // still prompt the first time they become multi-claimed.
   splitPrompted: Record<string, boolean>;
+  // Index into HISTORY_DATA when viewing a past-tab detail from the
+  // dashboard. null = not in history flow.
+  historyIdx: number | null;
 };
 
 type Action =
@@ -154,6 +162,7 @@ type Action =
   | { type: "APPLY_CUSTOM_SPLIT" }
   | { type: "TOGGLE_CURRENCY_PICKER" }
   | { type: "SET_CURRENCY"; currency: Currency }
+  | { type: "OPEN_HISTORY"; idx: number }
   | { type: "RESET" };
 
 const INITIAL: State = {
@@ -167,12 +176,24 @@ const INITIAL: State = {
   currency: "USD",
   currencyOpen: false,
   splitPrompted: {},
+  historyIdx: null,
 };
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
     case "GOTO":
-      return { ...state, screen: action.screen };
+      // Clear history context once the user leaves the history mini-flow
+      // (historyDetail + the sugarfish detail they can reach from it).
+      return {
+        ...state,
+        screen: action.screen,
+        historyIdx:
+          action.screen === "historyDetail" || action.screen === "sugarfish"
+            ? state.historyIdx
+            : null,
+      };
+    case "OPEN_HISTORY":
+      return { ...state, screen: "historyDetail", historyIdx: action.idx };
     case "TOGGLE_CLAIM": {
       const cur = state.claims[action.itemId] ?? [];
       const has = cur.includes(action.diner);
@@ -377,6 +398,8 @@ const STEP_ORDER: Screen[] = [
   "tip",
   "payment",
   "card",
+  "pool",
+  "tabbyCard",
   "success",
   "itemized",
   "insights",
@@ -392,10 +415,13 @@ const STEP_LABEL: Record<Screen, string> = {
   tip: "Tip",
   payment: "Pay",
   card: "Card",
+  pool: "Pool",
+  tabbyCard: "Tabby Card",
   success: "Done",
   itemized: "Bill",
   insights: "Insights",
   sugarfish: "Spot",
+  historyDetail: "History",
   replay: "Replay",
 };
 
@@ -415,95 +441,124 @@ export function InteractiveDemo() {
   const stepIdx = STEP_ORDER.indexOf(state.screen);
 
   return (
-    <div className="mx-auto max-w-[1100px] flex flex-col" style={{ minHeight: "calc(100vh - 60px)" }}>
-      {/* Top bar: title left, dot stepper center, reset right — single row */}
-      <div className="flex items-center gap-4 flex-wrap">
-        <AnimatePresence mode="wait">
-          <motion.h2
-            key={state.screen}
-            initial={{ opacity: 0, x: -6 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 6 }}
-            transition={{ duration: 0.25 }}
-            className="font-grotesk font-bold leading-none flex items-center gap-2.5"
-            style={{
-              color: T.ink,
-              fontSize: "clamp(1.3rem, 1.9vw, 1.75rem)",
-              letterSpacing: "-0.02em",
-            }}
+    <div className="mx-auto max-w-[1100px] flex flex-col">
+      {/* Top bar — two edge-aligned groups (back+title on left, stepper
+          + label + reset on right) so the center column stays open and
+          leaves room for the floating Pro badge on pro screens.
+          Margin below collapses on pro screens because the pill row
+          provides its own vertical spacing. */}
+      <div
+        className={clsx(
+          "flex items-center justify-between gap-6 md:gap-10 flex-wrap",
+          state.screen === "insights" || state.screen === "sugarfish"
+            ? ""
+            : "mb-4 md:mb-6",
+        )}
+      >
+        <div className="flex items-center gap-3 md:gap-6 flex-wrap">
+          <Link
+            href="/"
+            aria-label="Back to Tabby"
+            className="group inline-flex items-center gap-2 rounded-full text-[11px] md:text-sm font-semibold transition-all duration-300 border bg-transparent border-accent/40 text-accent hover:bg-accent/[0.08] hover:border-accent px-3 py-1.5 md:px-4 md:py-2 shrink-0 leading-none"
           >
-            {state.screen === "dashboard" && (
-              <img
-                src={LOGO}
-                alt=""
-                aria-hidden
-                width={32}
-                height={32}
-                className="rounded-md"
-                style={{ background: "#fff", padding: 3 }}
-              />
-            )}
-            {NARRATIVES[state.screen].title}
-          </motion.h2>
-        </AnimatePresence>
-
-        <div className="flex-1 min-w-[80px]" />
-
-        <div className="flex items-center gap-1.5">
-          {STEP_ORDER.map((s, i) => {
-            const active = i === stepIdx;
-            const done = i < stepIdx;
-            return (
-              <button
-                key={s}
-                onClick={() => dispatch({ type: "GOTO", screen: s })}
-                aria-label={`Go to ${STEP_LABEL[s]}`}
-                className="rounded-full transition-all"
-                style={{
-                  height: 6,
-                  width: active ? 22 : 6,
-                  background: active ? T.accent : done ? T.green : "rgba(14,14,14,0.15)",
-                }}
-              />
-            );
-          })}
+            <Arrow className="scale-x-[-1] transition-transform duration-300 group-hover:-translate-x-1" />
+            <span className="leading-none hidden sm:inline">Back to tabby</span>
+          </Link>
+          <AnimatePresence mode="wait">
+            <motion.h2
+              key={state.screen}
+              initial={{ opacity: 0, x: -6 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 6 }}
+              transition={{ duration: 0.25 }}
+              className="font-grotesk font-bold leading-none flex items-center gap-2.5"
+              style={{
+                color: T.ink,
+                fontSize: "clamp(1.3rem, 1.9vw, 1.75rem)",
+                letterSpacing: "-0.02em",
+              }}
+            >
+              {state.screen === "dashboard" && (
+                <img
+                  src={LOGO}
+                  alt=""
+                  aria-hidden
+                  width={32}
+                  height={32}
+                  className="rounded-md"
+                  style={{ background: "#fff", padding: 3 }}
+                />
+              )}
+              {NARRATIVES[state.screen].title}
+            </motion.h2>
+          </AnimatePresence>
         </div>
 
-        <span
-          className="text-[10px] uppercase tracking-[0.22em] font-semibold whitespace-nowrap"
-          style={{ color: T.gray }}
-        >
-          {String(stepIdx + 1).padStart(2, "0")}/{STEP_ORDER.length}{" "}
-          <span style={{ color: T.ink }}>{STEP_LABEL[state.screen]}</span>
-        </span>
+        <div className="flex items-center gap-3 md:gap-6 flex-wrap">
+          {/* Dot stepper — always visible; dots shrink on narrow. */}
+          <div className="flex items-center gap-1 md:gap-2.5">
+            {STEP_ORDER.map((s, i) => {
+              const active = i === stepIdx;
+              const done = i < stepIdx;
+              return (
+                <button
+                  key={s}
+                  onClick={() => dispatch({ type: "GOTO", screen: s })}
+                  aria-label={`Go to ${STEP_LABEL[s]}`}
+                  className="rounded-full transition-all shrink-0"
+                  style={{
+                    height: 5,
+                    width: active ? 16 : 5,
+                    background: active ? T.accent : done ? T.green : "rgba(14,14,14,0.15)",
+                  }}
+                />
+              );
+            })}
+          </div>
 
-        <button
-          onClick={() => dispatch({ type: "RESET" })}
-          className="text-[11px] uppercase tracking-[0.22em] font-semibold transition px-3 py-1.5 rounded-full hover:bg-line/5"
-          style={{ color: T.gray }}
-        >
-          ↺ reset
-        </button>
+          <span
+            className="text-[9px] md:text-[10px] uppercase tracking-[0.22em] font-semibold whitespace-nowrap"
+            style={{ color: T.gray }}
+          >
+            {String(stepIdx + 1).padStart(2, "0")}/{STEP_ORDER.length}{" "}
+            <span style={{ color: T.ink }}>{STEP_LABEL[state.screen]}</span>
+          </span>
+
+          <button
+            onClick={() => dispatch({ type: "RESET" })}
+            className="text-[10px] md:text-[11px] uppercase tracking-[0.22em] font-semibold transition px-2.5 py-1 md:px-3 md:py-1.5 rounded-full hover:bg-line/5"
+            style={{ color: T.gray }}
+          >
+            ↺ reset
+          </button>
+        </div>
       </div>
 
-      {/* Phone — flexes to fill all remaining vertical space */}
-      <div className="flex-1 flex flex-col justify-center items-center min-h-0 py-2 gap-3">
-        {(state.screen === "insights" || state.screen === "sugarfish") && (
+      {/* Pro pill — dedicated row between top bar and phone on pro-only
+          screens, with vertical padding so it breathes between the top
+          bar and the phone screen. Renders nothing on other screens so
+          the phone sits tight to the top bar. */}
+      {(state.screen === "insights" || state.screen === "sugarfish") && (
+        <div className="flex justify-center" style={{ paddingTop: "6px", paddingBottom: "10px" }}>
           <span
             className="inline-flex items-center uppercase font-bold whitespace-nowrap"
             style={{
               background: T.accent,
               color: "#fff",
-              fontSize: "0.78rem",
+              fontSize: "0.72rem",
               letterSpacing: "0.22em",
-              padding: "0.55rem 1.15rem",
+              padding: "0.4rem 0.95rem",
               borderRadius: "999px",
               boxShadow: "0 8px 22px -6px rgba(255,124,97,0.55)",
             }}
           >
             Pro · Coming later
           </span>
-        )}
+        </div>
+      )}
+
+      {/* Phone — flexes to fill all remaining vertical space. */}
+      <div className="flex-1 flex flex-col justify-start items-center min-h-0 pt-0 pb-2">
         <PhoneShell>
           <PhoneRouter
             state={state}
@@ -553,13 +608,25 @@ const NARRATIVES: Record<Screen, { eyebrow: string; title: string; body: string;
     highlight: "On tap, money moves from your account to the merchant in milliseconds.",
   },
   card: {
-    eyebrow: "step 05 / one-time card",
-    title: "Tap to pay.",
-    body: "Tabby Pro mints a single-use card capped at your share. Hold the phone near the reader — the card dies the moment settlement clears.",
+    eyebrow: "step 05 / fund the pool",
+    title: "Send your share.",
+    body: "Tap your personal card to drop your share into the table pool. Friends do the same on their phones — every contribution lands in the initiator's wallet, not at the merchant.",
+    highlight: "Nothing hits the restaurant yet — Tabby safely holds every share in the table pool until it's fully covered.",
+  },
+  pool: {
+    eyebrow: "step 06 / pool fills",
+    title: "Pool's filling.",
+    body: "From the initiator's view, watch each friend's card top up the table pool in real time. The moment it reaches 100%, Tabby mints a one-time virtual card capped at the exact bill total.",
+    highlight: "One card. One charge. The merchant sees a single tap, not four — and the virtual card self-destructs the second it's used.",
+  },
+  tabbyCard: {
+    eyebrow: "step 07 / one-time card",
+    title: "Tap the Tabby card.",
+    body: "The minted virtual Tabby card is loaded into the initiator's wallet. Hold the phone near the reader — one consolidated charge clears for the whole table.",
   },
   success: {
     eyebrow: "tab closed",
-    title: "Walk out.",
+    title: "Squared up.",
     body: "Alberto's sees one consolidated payment, not four. Your itemized receipt is filed in Tabby. Settlement clears overnight.",
     highlight: "Avg time from sit-down receipt to closed tab in beta: 2 min 14 sec.",
   },
@@ -580,6 +647,12 @@ const NARRATIVES: Record<Screen, { eyebrow: string; title: string; body: string;
     title: "Spot detail.",
     body:
       "Each restaurant has its own page — last visit, average spend, the friends you usually go with, most-ordered dishes.",
+  },
+  historyDetail: {
+    eyebrow: "history / past tab",
+    title: "Past tab.",
+    body:
+      "Every closed tab keeps a full receipt — who paid what, per-person totals, tip and tax. Tap the restaurant to see the spot page.",
   },
   replay: {
     eyebrow: "end of demo",
@@ -669,11 +742,14 @@ function PhoneRouter(props: RouterProps) {
           {props.state.screen === "tip" && <TipScreen {...props} />}
           {props.state.screen === "payment" && <PaymentScreen {...props} />}
           {props.state.screen === "card" && <CardScreen {...props} />}
+          {props.state.screen === "pool" && <PoolScreen {...props} />}
+          {props.state.screen === "tabbyCard" && <TabbyCardScreen {...props} />}
           {props.state.screen === "success" && <SuccessScreen {...props} />}
           {props.state.screen === "dashboard" && <DashboardScreen {...props} />}
           {props.state.screen === "friends" && <FriendsScreen {...props} />}
           {props.state.screen === "itemized" && <ItemizedScreen {...props} />}
           {props.state.screen === "sugarfish" && <SugarfishScreen {...props} />}
+          {props.state.screen === "historyDetail" && <HistoryDetailScreen {...props} />}
           {props.state.screen === "insights" && <InsightsScreen {...props} />}
           {props.state.screen === "replay" && <ReplayScreen {...props} />}
         </motion.div>
@@ -695,12 +771,63 @@ function StatusBar({ dark }: { dark?: boolean }) {
     >
       <span className="tabular-nums">9:41</span>
       <span style={{ width: "28%" }} />
-      <span className="flex items-center" style={{ gap: "1.3cqw" }}>
-        <span>•••</span>
-        <span
-          className="inline-block rounded-sm border"
-          style={{ width: "4.3cqw", height: "2.4cqw", borderColor: color }}
-        />
+      <span className="flex items-center" style={{ gap: "1.7cqw" }}>
+        {/* Full cellular signal — 4 ascending filled bars */}
+        <svg
+          viewBox="0 0 17 10"
+          style={{ height: "2.6cqw", width: "auto" }}
+          aria-hidden
+        >
+          <rect x="0"  y="7" width="3" height="3" rx="0.6" fill={color} />
+          <rect x="4"  y="5" width="3" height="5" rx="0.6" fill={color} />
+          <rect x="8"  y="2.5" width="3" height="7.5" rx="0.6" fill={color} />
+          <rect x="12" y="0" width="3" height="10" rx="0.6" fill={color} />
+        </svg>
+        {/* Wi-Fi — 2 concentric arcs + dot, centered */}
+        <svg
+          viewBox="0 0 20 14"
+          style={{ height: "2.6cqw", width: "auto" }}
+          fill="none"
+          stroke={color}
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+        >
+          <path d="M2 5 Q 10 -1 18 5" />
+          <path d="M5 8.5 Q 10 4.5 15 8.5" />
+          <circle cx="10" cy="12" r="1.1" fill={color} stroke="none" />
+        </svg>
+        {/* Battery — filled inner + positive terminal nub, sized to
+            match the cellular/wifi glyphs. */}
+        <span className="relative inline-flex items-center">
+          <span
+            className="inline-block relative"
+            style={{
+              width: "5cqw",
+              height: "2.6cqw",
+              border: `0.22cqw solid ${color}`,
+              borderRadius: "0.6cqw",
+              padding: "0.22cqw",
+            }}
+          >
+            <span
+              className="block h-full"
+              style={{ width: "100%", background: color, borderRadius: "0.3cqw" }}
+            />
+          </span>
+          <span
+            className="inline-block"
+            style={{
+              width: "0.4cqw",
+              height: "1.2cqw",
+              background: color,
+              borderTopRightRadius: "0.2cqw",
+              borderBottomRightRadius: "0.2cqw",
+              marginLeft: "0.15cqw",
+            }}
+          />
+        </span>
       </span>
     </div>
   );
@@ -728,11 +855,11 @@ function CameraScreen({ dispatch }: RouterProps) {
             height: "9cqw",
             background: "rgba(255,255,255,0.08)",
             color: T.white,
-            fontSize: "5.4cqw",
+            fontSize: "7.4cqw",
             lineHeight: 1,
           }}
         >
-          ‹
+          ❮
         </button>
         <span className="font-bold" style={{ fontSize: "6cqw" }}>Scan Receipt</span>
       </div>
@@ -1057,6 +1184,9 @@ function ItemsScreen({ state, dispatch }: RouterProps) {
         !respondedRef.current.has(item.id)
       ) {
         respondedRef.current.add(item.id);
+        // Only ~55% of solo claims get an NPC response, so sometimes
+        // shared items stay yours — feels more natural than "always".
+        if (Math.random() > 0.55) continue;
         const npcs = (["maya", "sam", "jake"] as Diner[]).filter(
           (d) => !claimedBy.includes(d),
         );
@@ -1096,7 +1226,7 @@ function ItemsScreen({ state, dispatch }: RouterProps) {
       {/* Header */}
       <div className="flex items-center justify-between" style={{ padding: "3.4cqw 8.4cqw 5cqw" }}>
         <div className="flex items-center" style={{ gap: "5cqw" }}>
-          <span style={{ fontSize: "6.7cqw" }}>‹</span>
+          <span style={{ fontSize: "6.7cqw" }}>❮</span>
           <span className="font-bold" style={{ fontSize: "7.4cqw", letterSpacing: "-0.02em" }}>
             Select Items
           </span>
@@ -1128,11 +1258,11 @@ function ItemsScreen({ state, dispatch }: RouterProps) {
           style={{
             background: T.accent,
             color: T.white,
-            fontSize: "3.7cqw",
-            letterSpacing: "0.12em",
+            fontSize: "2.4cqw",
+            letterSpacing: "0.16em",
             textTransform: "uppercase",
             fontWeight: 600,
-            padding: "2.6cqw 0",
+            padding: "1cqw 0",
           }}
         >
           tap an item to claim · friends claim after you
@@ -1191,16 +1321,16 @@ function ItemsScreen({ state, dispatch }: RouterProps) {
         })}
       </div>
 
-      {/* Pay pill */}
-      <div style={{ padding: "3.4cqw 10.1cqw 8.4cqw" }}>
+      {/* Pay pill — sized to match the Continue pill on Itemized/Tip */}
+      <div style={{ padding: "2.4cqw 10.1cqw 5cqw" }}>
         <button
           disabled={yourClaims === 0}
           onClick={() => dispatch({ type: "GOTO", screen: "tip" })}
           className="w-full text-center font-bold transition active:scale-95"
           style={{
             borderRadius: "999px",
-            padding: "6.7cqw 0",
-            fontSize: "5.4cqw",
+            padding: "3.4cqw 0",
+            fontSize: "3.4cqw",
             background: yourClaims === 0 ? "rgba(14,14,14,0.12)" : T.ink,
             color: yourClaims === 0 ? "rgba(14,14,14,0.4)" : T.cream,
             cursor: yourClaims === 0 ? "not-allowed" : "pointer",
@@ -1308,7 +1438,7 @@ function SplitModal({
                 fontSize: "3.1cqw",
               }}
             >
-              ‹
+              ❮
             </button>
           )}
           <span className="font-bold" style={{ fontSize: "4.8cqw" }}>
@@ -1763,7 +1893,7 @@ function TipScreen({ state, dispatch, yourSubtotal, tip, tax, yourTotal }: Route
       <div style={{ opacity: 0.35 }}>
         <div className="flex items-center justify-between" style={{ padding: "3.4cqw 8.4cqw 5cqw" }}>
           <div className="flex items-center" style={{ gap: "5cqw" }}>
-            <span style={{ fontSize: "6.7cqw" }}>‹</span>
+            <span style={{ fontSize: "6.7cqw" }}>❮</span>
             <span className="font-bold" style={{ fontSize: "7.4cqw", letterSpacing: "-0.02em" }}>
               Select Items
             </span>
@@ -1796,8 +1926,9 @@ function TipScreen({ state, dispatch, yourSubtotal, tip, tax, yourTotal }: Route
         </div>
       </div>
 
-      {/* Modal sheet — bumped to 88% height with tighter spacing so the
-          green Pay button never overflows. */}
+      {/* Modal sheet — height follows content so there's no empty
+          dark space below the Pay button. Bottom corners match the
+          phone's rounded frame so the sheet looks flush with the edges. */}
       <motion.div
         initial={{ y: "100%" }}
         animate={{ y: 0 }}
@@ -1808,8 +1939,7 @@ function TipScreen({ state, dispatch, yourSubtotal, tip, tax, yourTotal }: Route
           color: T.white,
           borderTopLeftRadius: "10.1cqw",
           borderTopRightRadius: "10.1cqw",
-          padding: "5cqw 8cqw 5cqw",
-          height: "88%",
+          padding: "5cqw 8cqw 9cqw",
           boxShadow: "0 -20px 40px -10px rgba(0,0,0,0.45)",
         }}
       >
@@ -1885,14 +2015,12 @@ function TipScreen({ state, dispatch, yourSubtotal, tip, tax, yourTotal }: Route
           <Line k="Total" v={fmt(yourTotal)} bold />
         </div>
 
-        <div className="flex-1" />
-
         {/* big green pay pill (Figma) */}
         <button
           onClick={() => dispatch({ type: "GOTO", screen: "payment" })}
           className="w-full font-bold transition active:scale-95"
           style={{
-            marginTop: "3cqw",
+            marginTop: "5cqw",
             borderRadius: "999px",
             padding: "5cqw 0",
             fontSize: "4.5cqw",
@@ -1932,9 +2060,9 @@ function Line({ k, v, bold, accent }: { k: string; v: string; bold?: boolean; ac
 function PaymentScreen({ state, dispatch, yourTotal }: RouterProps) {
   const groupOrder: PaymentMethod["group"][] = ["bank", "card", "conn"];
   const groupMeta: Record<PaymentMethod["group"], { icon: string; label: string }> = {
-    bank: { icon: "🏦", label: "Bank Accounts" },
-    card: { icon: "💳", label: "Cards" },
-    conn: { icon: "🔗", label: "Connections" },
+    bank: { icon: "", label: "Bank Accounts" },
+    card: { icon: "", label: "Cards" },
+    conn: { icon: "", label: "Connections · Coming later" },
   };
 
   const canPay = state.walletOn || state.paymentId !== null;
@@ -1951,7 +2079,7 @@ function PaymentScreen({ state, dispatch, yourTotal }: RouterProps) {
       <div className="flex items-center justify-between" style={{ padding: "3.4cqw 8.4cqw 5cqw" }}>
         <div className="flex items-center" style={{ gap: "5cqw" }}>
           <button onClick={() => dispatch({ type: "GOTO", screen: "tip" })} style={{ fontSize: "6.7cqw" }}>
-            ‹
+            ❮
           </button>
           <span className="font-bold" style={{ fontSize: "7.4cqw", letterSpacing: "-0.02em" }}>
             Payment Methods
@@ -1963,9 +2091,9 @@ function PaymentScreen({ state, dispatch, yourTotal }: RouterProps) {
             background: T.ink,
             color: T.cream,
             borderRadius: "999px",
-            padding: "2.4cqw 5.4cqw",
-            fontSize: "4.1cqw",
-            gap: "1.7cqw",
+            padding: "1.4cqw 3.4cqw",
+            fontSize: "2.9cqw",
+            gap: "1cqw",
           }}
         >
           ＋ Add
@@ -2000,16 +2128,14 @@ function PaymentScreen({ state, dispatch, yourTotal }: RouterProps) {
           return (
             <div key={g} style={{ marginTop: "5cqw" }}>
               <div
-                className="flex items-center font-medium"
+                className="font-medium text-left"
                 style={{
-                  gap: "2.5cqw",
                   color: T.gray,
                   fontSize: "4.3cqw",
                   marginBottom: "0.7cqw",
                 }}
               >
-                <span>{groupMeta[g].icon}</span>
-                <span>{groupMeta[g].label}</span>
+                {groupMeta[g].label}
               </div>
               {methods.map((m) => {
                 const selected = !state.walletOn && state.paymentId === m.id;
@@ -2057,8 +2183,8 @@ function PaymentScreen({ state, dispatch, yourTotal }: RouterProps) {
           className="w-full text-center font-bold transition active:scale-95"
           style={{
             borderRadius: "999px",
-            padding: "6.7cqw 0",
-            fontSize: "5.4cqw",
+            padding: "4.4cqw 0",
+            fontSize: "4cqw",
             background: !canPay ? "rgba(14,14,14,0.12)" : T.accent,
             color: !canPay ? "rgba(14,14,14,0.4)" : "#fff",
             cursor: !canPay ? "not-allowed" : "pointer",
@@ -2272,7 +2398,8 @@ function BottomNav({
 }
 
 // ─────────────────────────────────────────────────────────────────
-// 6. Card — Apple-Pay style cream card on dark backdrop (Figma)
+// 6. Card — initiator's Tabby wallet card funding the table pool.
+//    The merchant-facing one-time card lives on tabbyCard.
 // ─────────────────────────────────────────────────────────────────
 
 function CardScreen({ dispatch, yourTotal }: RouterProps) {
@@ -2283,7 +2410,7 @@ function CardScreen({ dispatch, yourTotal }: RouterProps) {
     setPhase("tapping");
     setTimeout(() => {
       setPhase("done");
-      setTimeout(() => dispatch({ type: "GOTO", screen: "success" }), 700);
+      setTimeout(() => dispatch({ type: "GOTO", screen: "pool" }), 700);
     }, 1200);
   };
 
@@ -2294,47 +2421,133 @@ function CardScreen({ dispatch, yourTotal }: RouterProps) {
     >
       <StatusBar dark />
 
-      {/* Cream payment card (Figma reference) */}
-      <button
+      {/* Instruction above the card */}
+      {phase === "ready" && (
+        <motion.span
+          className="absolute left-1/2 -translate-x-1/2 uppercase font-bold text-center whitespace-nowrap"
+          style={{
+            top: "8.5%",
+            fontSize: "3.2cqw",
+            letterSpacing: "0.24em",
+            color: T.white,
+          }}
+          animate={{ opacity: [0.55, 1, 0.55] }}
+          transition={{ duration: 1.6, repeat: Infinity }}
+        >
+          ↓ tap to fund the pool
+        </motion.span>
+      )}
+
+      {/* Tabby-branded wallet card — your share into the pool. Positioning
+          is on a wrapper; the motion.button handles only scale/opacity so
+          framer-managed transforms don't clobber the centering translate. */}
+      <div
+        className="absolute left-1/2 -translate-x-1/2"
+        style={{ top: "16%", width: "84%" }}
+      >
+      <motion.button
         onClick={onTap}
-        className="absolute left-1/2 -translate-x-1/2 cursor-pointer"
+        initial={{ scale: 0.92, opacity: 0, rotateX: -10 }}
+        animate={{ scale: 1, opacity: 1, rotateX: 0 }}
+        transition={{ type: "spring", stiffness: 220, damping: 20 }}
+        className="block w-full cursor-pointer overflow-hidden text-left relative"
         style={{
-          top: "16%",
-          width: "84%",
           aspectRatio: "1.55/1",
-          background: T.cream,
+          background: `linear-gradient(135deg, ${T.accent} 0%, #FF5C3A 60%, ${T.ink} 100%)`,
           borderRadius: "8.4cqw",
-          boxShadow: "0 30px 60px -20px rgba(0,0,0,0.55)",
-          padding: "8.4cqw",
-          textAlign: "left",
-          color: T.ink,
+          boxShadow: `0 30px 60px -20px ${T.accent}99, 0 0 0 1px rgba(255,255,255,0.12) inset`,
+          color: T.cream,
         }}
       >
-        {/* Pay $X.XX top-right */}
+        {/* Diagonal sheen */}
         <span
-          className="absolute font-bold tabular-nums"
-          style={{ top: "8.4cqw", right: "8.4cqw", fontSize: "5.4cqw" }}
-        >
-          Pay {fmt(yourTotal)}
-        </span>
-
-        {/* Phone-with-NFC illustration */}
-        <PhoneNFCIllustration tapping={phase === "tapping"} done={phase === "done"} />
-
-        {/* VISA bottom-right */}
-        <span
-          className="absolute font-extrabold"
+          aria-hidden
+          className="absolute pointer-events-none"
           style={{
-            right: "8.4cqw",
-            bottom: "6.7cqw",
-            fontSize: "8.4cqw",
-            letterSpacing: "0.02em",
-            color: "#1A1F71",
+            top: "-30%",
+            right: "-12%",
+            width: "55%",
+            height: "160%",
+            background: "rgba(255,255,255,0.07)",
+            transform: "rotate(20deg)",
+          }}
+        />
+
+        {/* Top row: chip + brand */}
+        <div
+          className="absolute flex items-center justify-between"
+          style={{ top: "5cqw", left: "6cqw", right: "6cqw" }}
+        >
+          <span
+            aria-hidden
+            style={{
+              width: "10cqw",
+              height: "7.6cqw",
+              borderRadius: "1.4cqw",
+              background:
+                "linear-gradient(135deg, #F5D478, #C49A3A 55%, #8A6620)",
+              boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.25)",
+            }}
+          />
+          <span
+            className="font-extrabold"
+            style={{
+              fontSize: "5.6cqw",
+              lineHeight: 1,
+              letterSpacing: "-0.025em",
+              color: T.cream,
+            }}
+          >
+            tabby
+          </span>
+        </div>
+
+        {/* Masked PAN center */}
+        <div
+          className="absolute font-bold tabular-nums"
+          style={{
+            left: "6cqw",
+            right: "6cqw",
+            top: "50%",
+            transform: "translateY(-50%)",
+            fontSize: "5.2cqw",
+            letterSpacing: "0.22em",
+            color: "rgba(255,255,255,0.92)",
           }}
         >
-          VISA
-        </span>
-      </button>
+          •• •• •• 4419
+        </div>
+
+        {/* Bottom row: destination + amount */}
+        <div
+          className="absolute"
+          style={{ left: "6cqw", right: "6cqw", bottom: "5cqw" }}
+        >
+          <span
+            className="block uppercase font-bold"
+            style={{
+              fontSize: "2.4cqw",
+              letterSpacing: "0.22em",
+              color: "rgba(255,236,224,0.7)",
+            }}
+          >
+            → Table Pool
+          </span>
+          <span
+            className="block font-bold tabular-nums"
+            style={{
+              fontSize: "6.4cqw",
+              letterSpacing: "-0.02em",
+              color: T.cream,
+              lineHeight: 1.05,
+              marginTop: "0.6cqw",
+            }}
+          >
+            {fmt(yourTotal)}
+          </span>
+        </div>
+      </motion.button>
+      </div>
 
       {/* NFC icon + caption + demo instruction */}
       <div
@@ -2348,7 +2561,6 @@ function CardScreen({ dispatch, yourTotal }: RouterProps) {
             height: "18.5cqw",
             borderColor: phase === "tapping" ? T.green : "rgba(255,255,255,0.4)",
             color: phase === "tapping" ? T.green : T.white,
-            fontSize: "8.4cqw",
           }}
           animate={
             phase === "tapping"
@@ -2357,31 +2569,45 @@ function CardScreen({ dispatch, yourTotal }: RouterProps) {
           }
           transition={{ duration: 1, repeat: phase === "tapping" ? Infinity : 0 }}
         >
-          ⌂
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={{ width: "10.5cqw", height: "10.5cqw" }}
+            aria-hidden
+          >
+            <path d="M4 8.32 a 7.43 7.43 0 0 1 0 7.36" />
+            <path d="M7.46 6.21 a 11.76 11.76 0 0 1 0 11.58" />
+            <path d="M10.91 4.1 a 15.91 15.91 0 0 1 0 15.8" />
+            <path d="M14.37 2 a 20.16 20.16 0 0 1 0 20" />
+          </svg>
         </motion.span>
         <span
           className="font-medium block w-full text-center"
           style={{ marginTop: "3.4cqw", fontSize: "5cqw" }}
         >
-          {phase === "ready" && "Hold near reader to pay"}
-          {phase === "tapping" && "Authorizing…"}
-          {phase === "done" && "Approved ✓"}
+          {phase === "ready" && "Send your share to the pool"}
+          {phase === "tapping" && "Funding pool…"}
+          {phase === "done" && "In the pool ✓"}
         </span>
-        {phase === "ready" && (
-          <motion.span
-            className="uppercase font-bold text-center block w-full"
-            style={{
-              marginTop: "4.2cqw",
-              fontSize: "3.4cqw",
-              letterSpacing: "0.24em",
-              color: T.white,
-            }}
-            animate={{ opacity: [0.55, 1, 0.55] }}
-            transition={{ duration: 1.6, repeat: Infinity }}
-          >
-            ↑ tap the card to continue
-          </motion.span>
-        )}
+        <span
+          className="block w-full text-center"
+          style={{
+            marginTop: "1.6cqw",
+            fontSize: "2.9cqw",
+            letterSpacing: "0.04em",
+            color: "rgba(255,255,255,0.55)",
+            maxWidth: "78%",
+            marginLeft: "auto",
+            marginRight: "auto",
+            lineHeight: 1.45,
+          }}
+        >
+          Funds land in the table pool — nothing hits the merchant yet.
+        </span>
       </div>
 
       {/* Swipe-up cancel */}
@@ -2457,6 +2683,660 @@ function PhoneNFCIllustration({ tapping, done }: { tapping: boolean; done: boole
         <rect x="42" y="32" width="28" height="50" rx="2" fill={T.cream} />
       </svg>
     </span>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────
+// 6b. Pool — initiator-perspective view: friends' shares pour into
+//     the table pool; on full, a one-time virtual Tabby card is minted.
+// ─────────────────────────────────────────────────────────────────
+
+const POOL_ORDER: Diner[] = ["you", "maya", "sam", "jake"];
+
+type DinerStatus = "queued" | "tapping" | "paid";
+
+// Coin start positions for the flying-coin animation. These match
+// the 2x2 diner grid roughly — tuned by eye since pixel-perfect
+// alignment isn't necessary for the visual metaphor to read.
+const COIN_START: Record<Diner, { left: string; top: string }> = {
+  you:  { left: "26%", top: "76%" },
+  maya: { left: "74%", top: "76%" },
+  sam:  { left: "26%", top: "90%" },
+  jake: { left: "74%", top: "90%" },
+};
+const RING_CENTER = { left: "50%", top: "32%" };
+
+function PoolScreen({ state, dispatch }: RouterProps) {
+  const tipPct = typeof state.tipPct === "number" ? state.tipPct / 100 : 0;
+  const billMultiplier = 1 + tipPct + TAX_RATE;
+
+  const dinerTotals = useMemo(
+    () =>
+      POOL_ORDER.map((d) => ({
+        diner: d,
+        amount: shareForDiner(state.claims, state.customSplits, d) * billMultiplier,
+      })),
+    [state.claims, state.customSplits, billMultiplier],
+  );
+  const billTotal = dinerTotals.reduce((a, b) => a + b.amount, 0);
+
+  // You arrived here straight from the card-tap, so you start as paid.
+  const [statuses, setStatuses] = useState<Record<Diner, DinerStatus>>({
+    you: "paid",
+    maya: "queued",
+    sam: "queued",
+    jake: "queued",
+  });
+  const [coins, setCoins] = useState<Array<{ id: string; from: Diner }>>([]);
+  const [minted, setMinted] = useState(false);
+
+  useEffect(() => {
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    const queue: Diner[] = ["maya", "sam", "jake"];
+    let t = 700;
+    queue.forEach((d) => {
+      // Card pulses in tapping state
+      timers.push(setTimeout(() => {
+        setStatuses((s) => ({ ...s, [d]: "tapping" }));
+      }, t));
+      // Coin spawns mid-tap and flies to the ring
+      timers.push(setTimeout(() => {
+        setCoins((c) => [...c, { id: `${d}-${Date.now()}`, from: d }]);
+      }, t + 350));
+      // Coin "lands" → mark paid, increment ring fill
+      timers.push(setTimeout(() => {
+        setStatuses((s) => ({ ...s, [d]: "paid" }));
+      }, t + 950));
+      t += 1250;
+    });
+    // Mint reveal
+    timers.push(setTimeout(() => setMinted(true), t + 250));
+    // Auto-route to Tabby card screen
+    timers.push(setTimeout(
+      () => dispatch({ type: "GOTO", screen: "tabbyCard" }),
+      t + 2100,
+    ));
+    return () => timers.forEach(clearTimeout);
+  }, [dispatch]);
+
+  const pooledAmount = dinerTotals
+    .filter((d) => statuses[d.diner] === "paid")
+    .reduce((a, b) => a + b.amount, 0);
+  const pct = billTotal > 0 ? Math.min(100, (pooledAmount / billTotal) * 100) : 0;
+
+  // Ring geometry
+  const ringR = 78;
+  const ringC = 2 * Math.PI * ringR;
+  const dashOffset = ringC * (1 - pct / 100);
+
+  return (
+    <div
+      className="relative w-full h-full font-grotesk overflow-hidden"
+      style={{ background: T.cream, color: T.ink }}
+    >
+      <StatusBar />
+
+      {/* Header */}
+      <div
+        className="text-center"
+        style={{ paddingTop: "3cqw", paddingBottom: "1cqw" }}
+      >
+        <span
+          className="block uppercase font-bold"
+          style={{
+            fontSize: "2.7cqw",
+            letterSpacing: "0.3em",
+            color: T.accent,
+          }}
+        >
+          Table Pool
+        </span>
+        <span
+          className="block font-medium"
+          style={{
+            fontSize: "3cqw",
+            color: T.gray,
+            marginTop: "0.6cqw",
+            letterSpacing: "0.04em",
+          }}
+        >
+          Alberto&apos;s · Table 12 · 4 diners
+        </span>
+      </div>
+
+      {/* Ring gauge */}
+      <div
+        className="absolute"
+        style={{
+          left: "50%",
+          top: RING_CENTER.top,
+          transform: "translate(-50%, -50%)",
+          width: "62%",
+          aspectRatio: "1",
+        }}
+      >
+        {/* Ambient peach glow */}
+        <motion.span
+          aria-hidden
+          className="absolute inset-0 rounded-full pointer-events-none"
+          style={{
+            background: `radial-gradient(circle at 50% 50%, ${T.accent}33, transparent 65%)`,
+            filter: "blur(10px)",
+          }}
+          animate={{ opacity: [0.45, 0.85, 0.45] }}
+          transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+        />
+
+        {/* Progress ring */}
+        <svg
+          viewBox="0 0 200 200"
+          className="absolute inset-0 w-full h-full"
+          style={{ overflow: "visible" }}
+        >
+          <circle
+            cx="100"
+            cy="100"
+            r={ringR}
+            fill="none"
+            stroke="rgba(14,14,14,0.08)"
+            strokeWidth="14"
+          />
+          <motion.circle
+            cx="100"
+            cy="100"
+            r={ringR}
+            fill="none"
+            stroke={T.accent}
+            strokeWidth="14"
+            strokeLinecap="round"
+            strokeDasharray={ringC}
+            initial={false}
+            animate={{ strokeDashoffset: dashOffset }}
+            transition={{ type: "spring", stiffness: 90, damping: 22 }}
+            transform="rotate(-90 100 100)"
+            style={{ filter: `drop-shadow(0 0 6px ${T.accent}80)` }}
+          />
+        </svg>
+
+        {/* Inner content — counter or virtual card preview */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+          <AnimatePresence mode="wait">
+            {!minted ? (
+              <motion.div
+                key="counter"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.85 }}
+                transition={{ duration: 0.3 }}
+                className="flex flex-col items-center"
+              >
+                <motion.div
+                  key={pooledAmount}
+                  initial={{ scale: 0.94, opacity: 0.7 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ type: "spring", stiffness: 280, damping: 20 }}
+                  className="font-grotesk font-bold tabular-nums leading-none"
+                  style={{
+                    fontSize: "10.4cqw",
+                    letterSpacing: "-0.03em",
+                    color: T.ink,
+                  }}
+                >
+                  {fmt(pooledAmount)}
+                </motion.div>
+                <div
+                  className="font-medium tabular-nums"
+                  style={{
+                    marginTop: "1.4cqw",
+                    fontSize: "2.6cqw",
+                    color: T.gray,
+                    letterSpacing: "0.04em",
+                  }}
+                >
+                  of {fmt(billTotal)}
+                </div>
+                <div
+                  className="font-bold tabular-nums"
+                  style={{
+                    marginTop: "1cqw",
+                    fontSize: "2.8cqw",
+                    color: T.accent,
+                    letterSpacing: "0.08em",
+                  }}
+                >
+                  {Math.round(pct)}% POOLED
+                </div>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="mini-card"
+                initial={{ scale: 0, rotate: -14, opacity: 0 }}
+                animate={{ scale: 1, rotate: 0, opacity: 1 }}
+                transition={{ type: "spring", stiffness: 200, damping: 14 }}
+                className="rounded-md flex flex-col justify-between"
+                style={{
+                  width: "76%",
+                  aspectRatio: "1.55/1",
+                  background: T.white,
+                  padding: "2.4cqw 2.6cqw",
+                  color: T.ink,
+                  boxShadow:
+                    "0 12px 28px -8px rgba(14,14,14,0.18), 0 0 0 1px rgba(14,14,14,0.06) inset",
+                }}
+              >
+                <div className="flex items-center justify-between">
+                  <span
+                    aria-hidden
+                    style={{
+                      width: "3.6cqw",
+                      height: "2.6cqw",
+                      borderRadius: "0.5cqw",
+                      background:
+                        "linear-gradient(135deg, #F5D478, #C49A3A 55%, #8A6620)",
+                    }}
+                  />
+                  <span
+                    className="uppercase font-bold"
+                    style={{
+                      fontSize: "1.2cqw",
+                      letterSpacing: "0.2em",
+                      padding: "0.4cqw 1cqw",
+                      borderRadius: "999px",
+                      background: T.accent,
+                      color: T.cream,
+                    }}
+                  >
+                    1×
+                  </span>
+                </div>
+                <div className="flex items-end justify-between">
+                  <span
+                    className="font-bold tabular-nums"
+                    style={{
+                      fontSize: "3.2cqw",
+                      letterSpacing: "-0.02em",
+                      color: T.ink,
+                    }}
+                  >
+                    {fmt(billTotal)}
+                  </span>
+                  <span
+                    className="font-extrabold italic"
+                    style={{
+                      fontSize: "3cqw",
+                      letterSpacing: "-0.01em",
+                      color: "#1A1F71",
+                      lineHeight: 1,
+                    }}
+                  >
+                    VISA
+                  </span>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
+
+      {/* Live status caption (sits between ring and grid) */}
+      <div
+        className="absolute text-center"
+        style={{ left: 0, right: 0, top: "53%" }}
+      >
+        <AnimatePresence mode="wait">
+          {!minted ? (
+            <motion.span
+              key={`cap-${Object.values(statuses).join("-")}`}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.25 }}
+              className="font-medium block uppercase"
+              style={{
+                fontSize: "2.6cqw",
+                letterSpacing: "0.18em",
+                color: T.gray,
+              }}
+            >
+              {(() => {
+                const tappingDiner = (POOL_ORDER as Diner[]).find(
+                  (d) => statuses[d] === "tapping",
+                );
+                if (tappingDiner) {
+                  return `${DINERS[tappingDiner].name.split(" ")[0]} is tapping…`;
+                }
+                const allPaid = (POOL_ORDER as Diner[]).every(
+                  (d) => statuses[d] === "paid",
+                );
+                if (allPaid) return "Pool full · minting card";
+                return "Waiting on the table…";
+              })()}
+            </motion.span>
+          ) : (
+            <motion.span
+              key="cap-minted"
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="font-bold block uppercase"
+              style={{
+                fontSize: "2.6cqw",
+                letterSpacing: "0.22em",
+                color: T.accent,
+              }}
+            >
+              ✦ Loading into your wallet…
+            </motion.span>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Diner grid 2x2 */}
+      <div
+        className="absolute"
+        style={{
+          left: "5cqw",
+          right: "5cqw",
+          bottom: "5cqw",
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: "2.4cqw",
+        }}
+      >
+        {dinerTotals.map(({ diner, amount }) => {
+          const status = statuses[diner];
+          const meta = DINERS[diner];
+          const isPaid = status === "paid";
+          const isTapping = status === "tapping";
+          return (
+            <motion.div
+              key={diner}
+              animate={
+                isTapping
+                  ? { scale: [1, 1.04, 1] }
+                  : { scale: 1 }
+              }
+              transition={{ duration: 0.55, repeat: isTapping ? Infinity : 0 }}
+              className="flex items-center"
+              style={{
+                background: T.white,
+                border: `1px solid ${
+                  isPaid
+                    ? T.accent
+                    : isTapping
+                    ? T.accent
+                    : "rgba(14,14,14,0.08)"
+                }`,
+                borderRadius: "3cqw",
+                padding: "2.4cqw 2.6cqw",
+                gap: "2.2cqw",
+                boxShadow: isPaid
+                  ? `0 6px 18px -10px ${T.accent}80`
+                  : "0 4px 12px -8px rgba(14,14,14,0.18)",
+              }}
+            >
+              <span
+                className="grid place-items-center font-bold rounded-full shrink-0"
+                style={{
+                  width: "8.4cqw",
+                  height: "8.4cqw",
+                  background: meta.color,
+                  color: T.ink,
+                  fontSize: "3cqw",
+                }}
+              >
+                {meta.initials}
+              </span>
+              <div className="flex-1 min-w-0">
+                <div
+                  className="font-bold tabular-nums"
+                  style={{
+                    fontSize: "3.2cqw",
+                    color: T.ink,
+                    letterSpacing: "-0.01em",
+                  }}
+                >
+                  {fmt(amount)}
+                </div>
+                <div
+                  className="font-bold uppercase"
+                  style={{
+                    fontSize: "1.9cqw",
+                    color: isPaid
+                      ? T.accent
+                      : isTapping
+                      ? T.accent
+                      : T.gray,
+                    letterSpacing: "0.16em",
+                    marginTop: "0.5cqw",
+                  }}
+                >
+                  {isPaid ? "✓ paid" : isTapping ? "tapping" : "queued"}
+                </div>
+              </div>
+            </motion.div>
+          );
+        })}
+      </div>
+
+      {/* Flying coins — peach orbs flowing into the ring */}
+      <AnimatePresence>
+        {coins.map((c) => (
+          <motion.div
+            key={c.id}
+            className="absolute pointer-events-none rounded-full"
+            initial={{
+              left: COIN_START[c.from].left,
+              top: COIN_START[c.from].top,
+              scale: 0.6,
+              opacity: 0,
+            }}
+            animate={{
+              left: [COIN_START[c.from].left, COIN_START[c.from].left, RING_CENTER.left],
+              top: [COIN_START[c.from].top, COIN_START[c.from].top, RING_CENTER.top],
+              scale: [0.6, 1.15, 0.4],
+              opacity: [0, 1, 0],
+            }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.7, ease: [0.4, 0, 0.65, 1], times: [0, 0.18, 1] }}
+            onAnimationComplete={() => {
+              setCoins((cs) => cs.filter((x) => x.id !== c.id));
+            }}
+            style={{
+              width: "5cqw",
+              height: "5cqw",
+              background: `radial-gradient(circle at 30% 30%, #FFD8B0, ${T.accent})`,
+              boxShadow: `0 4px 16px ${T.accent}99, 0 0 0 1px rgba(255,255,255,0.5) inset`,
+              transform: "translate(-50%, -50%)",
+            }}
+          />
+        ))}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────
+// 6c. Tabby Card — initiator taps the minted one-time virtual card
+//     to the merchant POS for the consolidated bill total.
+// ─────────────────────────────────────────────────────────────────
+
+function TabbyCardScreen({ state, dispatch }: RouterProps) {
+  const tipPct = typeof state.tipPct === "number" ? state.tipPct / 100 : 0;
+  const billMultiplier = 1 + tipPct + TAX_RATE;
+  const billTotal = useMemo(
+    () =>
+      POOL_ORDER.reduce(
+        (sum, d) =>
+          sum + shareForDiner(state.claims, state.customSplits, d) * billMultiplier,
+        0,
+      ),
+    [state.claims, state.customSplits, billMultiplier],
+  );
+
+  const [phase, setPhase] = useState<"ready" | "tapping" | "done">("ready");
+
+  const onTap = () => {
+    if (phase !== "ready") return;
+    setPhase("tapping");
+    setTimeout(() => {
+      setPhase("done");
+      setTimeout(() => dispatch({ type: "GOTO", screen: "success" }), 800);
+    }, 1300);
+  };
+
+  return (
+    <div
+      className="relative w-full h-full font-grotesk overflow-hidden"
+      style={{ background: T.charcoal, color: T.white }}
+    >
+      <StatusBar dark />
+
+      {/* Instruction */}
+      {phase === "ready" && (
+        <motion.span
+          className="absolute left-1/2 -translate-x-1/2 uppercase font-bold text-center whitespace-nowrap"
+          style={{
+            top: "8.5%",
+            fontSize: "3.4cqw",
+            letterSpacing: "0.24em",
+            color: T.accent,
+          }}
+          animate={{ opacity: [0.55, 1, 0.55] }}
+          transition={{ duration: 1.6, repeat: Infinity }}
+        >
+          ✦ tap to charge merchant
+        </motion.span>
+      )}
+
+      {/* Cream Visa-style one-time virtual card — Tabby-issued. Mirrors
+          the original Apple-Pay card layout: amount top-right, phone-NFC
+          illustration on the left, VISA wordmark bottom-right. */}
+      <div
+        className="absolute left-1/2 -translate-x-1/2"
+        style={{ top: "16%", width: "84%" }}
+      >
+        <motion.button
+          onClick={onTap}
+          initial={{ scale: 0.85, opacity: 0, rotateX: -18 }}
+          animate={{ scale: 1, opacity: 1, rotateX: 0 }}
+          transition={{ type: "spring", stiffness: 220, damping: 18 }}
+          className="block w-full cursor-pointer relative text-left"
+          style={{
+            aspectRatio: "1.55/1",
+            background: T.cream,
+            borderRadius: "8.4cqw",
+            boxShadow: "0 30px 60px -20px rgba(0,0,0,0.55)",
+            padding: "8.4cqw",
+            color: T.ink,
+          }}
+        >
+          {/* Pay $X.XX top-right */}
+          <span
+            className="absolute font-bold tabular-nums"
+            style={{ top: "8.4cqw", right: "8.4cqw", fontSize: "5.4cqw" }}
+          >
+            Pay {fmt(billTotal)}
+          </span>
+
+          {/* Phone-with-NFC illustration */}
+          <PhoneNFCIllustration tapping={phase === "tapping"} done={phase === "done"} />
+
+          {/* VISA bottom-right */}
+          <span
+            className="absolute font-extrabold"
+            style={{
+              right: "8.4cqw",
+              bottom: "6.7cqw",
+              fontSize: "8.4cqw",
+              letterSpacing: "0.02em",
+              color: "#1A1F71",
+            }}
+          >
+            VISA
+          </span>
+        </motion.button>
+      </div>
+
+      {/* NFC indicator + caption */}
+      <div
+        className="absolute left-0 right-0 flex flex-col items-center text-center px-6"
+        style={{ top: "53%" }}
+      >
+        <motion.span
+          className="grid place-items-center rounded-full border"
+          style={{
+            width: "18.5cqw",
+            height: "18.5cqw",
+            borderColor:
+              phase === "tapping"
+                ? T.green
+                : phase === "done"
+                ? T.green
+                : "rgba(255,255,255,0.4)",
+            color: phase === "tapping" || phase === "done" ? T.green : T.white,
+          }}
+          animate={
+            phase === "tapping" ? { scale: [1, 1.18, 1] } : { scale: 1 }
+          }
+          transition={{ duration: 1, repeat: phase === "tapping" ? Infinity : 0 }}
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={{ width: "10.5cqw", height: "10.5cqw" }}
+            aria-hidden
+          >
+            <path d="M4 8.32 a 7.43 7.43 0 0 1 0 7.36" />
+            <path d="M7.46 6.21 a 11.76 11.76 0 0 1 0 11.58" />
+            <path d="M10.91 4.1 a 15.91 15.91 0 0 1 0 15.8" />
+            <path d="M14.37 2 a 20.16 20.16 0 0 1 0 20" />
+          </svg>
+        </motion.span>
+        <span
+          className="font-medium block w-full text-center"
+          style={{ marginTop: "3.4cqw", fontSize: "5cqw" }}
+        >
+          {phase === "ready" && "Hold near merchant reader"}
+          {phase === "tapping" && "Settling with Alberto's…"}
+          {phase === "done" && "Card consumed ✓"}
+        </span>
+        <span
+          className="block w-full text-center"
+          style={{
+            marginTop: "1.6cqw",
+            fontSize: "2.9cqw",
+            letterSpacing: "0.04em",
+            color: "rgba(255,255,255,0.55)",
+            maxWidth: "82%",
+            marginLeft: "auto",
+            marginRight: "auto",
+            lineHeight: 1.45,
+          }}
+        >
+          One charge for the whole table — the virtual card self-destructs after.
+        </span>
+      </div>
+
+      {/* Back to pool */}
+      <button
+        onClick={() => dispatch({ type: "GOTO", screen: "pool" })}
+        className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center"
+        style={{
+          bottom: "6.7cqw",
+          color: "rgba(255,255,255,0.55)",
+          fontSize: "4.3cqw",
+        }}
+      >
+        <span>⌃</span>
+        <span style={{ marginTop: "1cqw" }}>Back to pool</span>
+      </button>
+    </div>
   );
 }
 
@@ -2600,13 +3480,207 @@ function SuccLine({ k, v, bold }: { k: string; v: string; bold?: boolean }) {
 // Open-tab promo card → tap to advance; recent history list below.
 // ─────────────────────────────────────────────────────────────────
 
-const HISTORY_DATA: Array<{ name: string; date: string; price: string }> = [
-  { name: "Lunch at The Olive Grove", date: "February 15, 2026", price: "$14.00" },
-  { name: "Drinks at The Rustic Table", date: "January 10, 2026", price: "$12.50" },
-  { name: "Drinks at The Golden Fork", date: "December 25, 2025", price: "$16.75" },
-  { name: "Dinner at The Savory Spot", date: "November 30, 2025", price: "$10.99" },
-  { name: "Brunch at The Morning Cafe", date: "March 5, 2026", price: "$18.40" },
+type SpotInfo = {
+  emoji: string;
+  address: string;
+  lastVisit: string;
+  avgSpend: string;
+  mostOrdered: Array<[string, string]>;
+  visits: Array<{ date: string; price: string; with: string }>;
+};
+
+type HistoryEntry = {
+  id: string;
+  name: string;
+  restaurant: string;
+  tableNo: string;
+  date: string;
+  diners: Diner[];
+  items: Array<{ name: string; qty: number; price: number; claimedBy: Diner[] }>;
+  tipPct: number; // as decimal, e.g. 0.20
+  spot: SpotInfo;
+};
+
+const SUGARFISH_SPOT: SpotInfo = {
+  emoji: "🐟",
+  address: "1345 2nd St., Santa Monica, CA 90401",
+  lastVisit: "Today",
+  avgSpend: "$144.98",
+  mostOrdered: [
+    ["Maki Roll", "$7.00"],
+    ["Yellowtail Sashimi", "$12.00"],
+    ["Grilled Salmon", "$18.00"],
+  ],
+  visits: [
+    { date: "Today", price: "$82.08", with: "Maya, Sam, Jake" },
+    { date: "Jan 5, 2026", price: "$144.98", with: "Maya, Sam" },
+    { date: "Nov 12, 2025", price: "$167.40", with: "Sam" },
+  ],
+};
+
+const HISTORY_DATA: HistoryEntry[] = [
+  {
+    id: "olive",
+    name: "Lunch at The Olive Grove",
+    restaurant: "The Olive Grove",
+    tableNo: "Table 4",
+    date: "February 15, 2026",
+    diners: ["you", "maya"],
+    tipPct: 0.20,
+    items: [
+      { name: "Kale Caesar Salad", qty: 1, price: 11, claimedBy: ["you"] },
+      { name: "Garlic Bread", qty: 1, price: 7, claimedBy: ["you", "maya"] },
+      { name: "Sparkling Water", qty: 2, price: 4.5, claimedBy: ["you", "maya"] },
+    ],
+    spot: {
+      emoji: "🫒",
+      address: "842 Abbot Kinney Blvd, Venice, CA 90291",
+      lastVisit: "Feb 15",
+      avgSpend: "$28.42",
+      mostOrdered: [
+        ["Kale Caesar Salad", "$11.00"],
+        ["Margherita Pizza", "$17.00"],
+        ["Tiramisu", "$9.00"],
+      ],
+      visits: [
+        { date: "Feb 15, 2026", price: "$24.37", with: "Maya" },
+        { date: "Jan 3, 2026", price: "$32.18", with: "Maya, Sam" },
+        { date: "Nov 20, 2025", price: "$28.72", with: "Maya" },
+      ],
+    },
+  },
+  {
+    id: "rustic",
+    name: "Drinks at The Rustic Table",
+    restaurant: "The Rustic Table",
+    tableNo: "Bar seat 3",
+    date: "January 10, 2026",
+    diners: ["you", "jake", "sam"],
+    tipPct: 0.20,
+    items: [
+      { name: "IPA Draft", qty: 1, price: 9, claimedBy: ["you"] },
+      { name: "Margarita", qty: 3, price: 13, claimedBy: ["you", "jake", "sam"] },
+      { name: "Truffle Fries", qty: 1, price: 12, claimedBy: ["you", "jake", "sam"] },
+    ],
+    spot: {
+      emoji: "🍷",
+      address: "212 Montana Ave, Santa Monica, CA 90403",
+      lastVisit: "Jan 10",
+      avgSpend: "$42.10",
+      mostOrdered: [
+        ["Old Fashioned", "$15.00"],
+        ["Truffle Fries", "$12.00"],
+        ["Burrata Plate", "$18.00"],
+      ],
+      visits: [
+        { date: "Jan 10, 2026", price: "$33.35", with: "Jake, Sam" },
+        { date: "Dec 14, 2025", price: "$48.20", with: "Jake, Sam, Maya" },
+        { date: "Oct 9, 2025", price: "$44.75", with: "Jake" },
+      ],
+    },
+  },
+  {
+    id: "golden",
+    name: "Drinks at The Golden Fork",
+    restaurant: "The Golden Fork",
+    tableNo: "Table 7",
+    date: "December 25, 2025",
+    diners: ["you", "maya", "sam", "jake"],
+    tipPct: 0.20,
+    items: [
+      { name: "Old Fashioned", qty: 1, price: 16, claimedBy: ["you"] },
+      { name: "Negroni", qty: 3, price: 15, claimedBy: ["maya", "sam", "jake"] },
+      { name: "Calamari", qty: 1, price: 16, claimedBy: ["you", "maya", "sam", "jake"] },
+    ],
+    spot: {
+      emoji: "🍽️",
+      address: "611 S Spring St, Los Angeles, CA 90014",
+      lastVisit: "Dec 25",
+      avgSpend: "$85.30",
+      mostOrdered: [
+        ["NY Strip Steak", "$42.00"],
+        ["Calamari", "$16.00"],
+        ["Negroni", "$15.00"],
+      ],
+      visits: [
+        { date: "Dec 25, 2025", price: "$25.65", with: "Maya, Sam, Jake" },
+        { date: "Oct 31, 2025", price: "$98.40", with: "Maya, Sam" },
+        { date: "Aug 12, 2025", price: "$76.90", with: "Jake" },
+      ],
+    },
+  },
+  {
+    id: "savory",
+    name: "Dinner at The Savory Spot",
+    restaurant: "The Savory Spot",
+    tableNo: "Table 12",
+    date: "November 30, 2025",
+    diners: ["you", "maya"],
+    tipPct: 0.20,
+    items: [
+      { name: "Roast Chicken", qty: 1, price: 26, claimedBy: ["you"] },
+      { name: "Branzino", qty: 1, price: 32, claimedBy: ["maya"] },
+      { name: "House Salad", qty: 2, price: 10, claimedBy: ["you", "maya"] },
+      { name: "Bread Service", qty: 1, price: 6, claimedBy: ["you", "maya"] },
+    ],
+    spot: {
+      emoji: "🍗",
+      address: "3109 W Sunset Blvd, Los Angeles, CA 90026",
+      lastVisit: "Nov 30",
+      avgSpend: "$58.72",
+      mostOrdered: [
+        ["Roast Chicken", "$26.00"],
+        ["Branzino", "$32.00"],
+        ["House Salad", "$10.00"],
+      ],
+      visits: [
+        { date: "Nov 30, 2025", price: "$50.02", with: "Maya" },
+        { date: "Sep 18, 2025", price: "$64.30", with: "Maya, Jake" },
+        { date: "Jul 22, 2025", price: "$55.80", with: "Maya" },
+      ],
+    },
+  },
+  {
+    id: "morning",
+    name: "Brunch at The Morning Cafe",
+    restaurant: "The Morning Cafe",
+    tableNo: "Table 9",
+    date: "March 5, 2026",
+    diners: ["you", "maya", "sam"],
+    tipPct: 0.20,
+    items: [
+      { name: "Avocado Toast", qty: 1, price: 16, claimedBy: ["you"] },
+      { name: "Eggs Benedict", qty: 1, price: 18, claimedBy: ["maya"] },
+      { name: "Shakshuka", qty: 1, price: 17, claimedBy: ["sam"] },
+      { name: "Cold Brew", qty: 3, price: 6, claimedBy: ["you", "maya", "sam"] },
+      { name: "Fruit Plate", qty: 1, price: 11, claimedBy: ["you", "maya", "sam"] },
+    ],
+    spot: {
+      emoji: "☕",
+      address: "1714 Silver Lake Blvd, Los Angeles, CA 90026",
+      lastVisit: "Mar 5",
+      avgSpend: "$34.10",
+      mostOrdered: [
+        ["Avocado Toast", "$16.00"],
+        ["Eggs Benedict", "$18.00"],
+        ["Cold Brew", "$6.00"],
+      ],
+      visits: [
+        { date: "Mar 5, 2026", price: "$32.92", with: "Maya, Sam" },
+        { date: "Feb 8, 2026", price: "$38.14", with: "Maya" },
+        { date: "Jan 4, 2026", price: "$29.80", with: "Sam" },
+      ],
+    },
+  },
 ];
+
+function historyUserTotal(entry: HistoryEntry): number {
+  const yourSubtotal = entry.items.reduce((sum, it) => {
+    if (!it.claimedBy.includes("you")) return sum;
+    return sum + (it.qty * it.price) / it.claimedBy.length;
+  }, 0);
+  return yourSubtotal * (1 + entry.tipPct + TAX_RATE);
+}
 
 const FRIEND_AVATARS: Array<{ initials: string; color: string }> = [
   { initials: "JM", color: "#F6C6B3" },
@@ -2639,7 +3713,15 @@ function DashboardScreen({ dispatch }: RouterProps) {
         >
           <span
             className="rounded-full grid place-items-center font-bold"
-            style={{ width: "14.4cqw", height: "14.4cqw", background: T.cream, color: T.ink, fontSize: "4.3cqw" }}
+            style={{
+              width: "14.4cqw",
+              height: "14.4cqw",
+              background: T.cream,
+              color: T.ink,
+              fontSize: "4.3cqw",
+              lineHeight: 1,
+              textAlign: "center",
+            }}
           >
             JM
           </span>
@@ -2652,7 +3734,7 @@ function DashboardScreen({ dispatch }: RouterProps) {
             The Rustic Table
           </div>
           <button
-            onClick={() => dispatch({ type: "GOTO", screen: "friends" })}
+            onClick={() => dispatch({ type: "GOTO", screen: "items" })}
             className="font-bold transition active:scale-95"
             style={{
               marginTop: "3.6cqw",
@@ -2737,11 +3819,11 @@ function DashboardScreen({ dispatch }: RouterProps) {
         >
           <span>↻</span> History
         </div>
-        {HISTORY_DATA.map((h) => (
+        {HISTORY_DATA.map((h, idx) => (
           <button
-            key={h.name}
+            key={h.id}
             type="button"
-            onClick={() => dispatch({ type: "GOTO", screen: "itemized" })}
+            onClick={() => dispatch({ type: "OPEN_HISTORY", idx })}
             aria-label={`View ${h.name}`}
             className="w-full flex items-start text-left transition active:scale-[0.99] hover:bg-black/[0.02]"
             style={{ padding: "2.9cqw 0", borderBottom: "1px solid rgba(14,14,14,0.06)", gap: "3cqw" }}
@@ -2769,7 +3851,7 @@ function DashboardScreen({ dispatch }: RouterProps) {
               className="tabular-nums font-semibold text-right"
               style={{ fontSize: "3.8cqw", minWidth: "18cqw", flexShrink: 0, fontVariantNumeric: "tabular-nums" }}
             >
-              {h.price}
+              {fmt(historyUserTotal(h))}
             </span>
             <span style={{ fontSize: "3.4cqw", color: T.gray, flexShrink: 0, marginLeft: "0.4cqw" }}>›</span>
           </button>
@@ -2839,12 +3921,12 @@ function FriendsScreen({ dispatch }: RouterProps) {
             aspectRatio: "1",
             background: T.ink,
             color: T.cream,
-            fontSize: "5.4cqw",
+            fontSize: "7.4cqw",
             lineHeight: 1,
             boxShadow: "0 4px 12px rgba(14,14,14,0.18)",
           }}
         >
-          ‹
+          ❮
         </button>
         <span className="font-bold" style={{ fontSize: "5.3cqw", letterSpacing: "-0.02em" }}>
           {tab === "friends" ? "Friends" : "Groups"}
@@ -2999,8 +4081,24 @@ function FriendsScreen({ dispatch }: RouterProps) {
 // Matches Figma 439:1728.
 // ─────────────────────────────────────────────────────────────────
 
-function SugarfishScreen({ dispatch }: RouterProps) {
+function SugarfishScreen({ state, dispatch }: RouterProps) {
   const [mapOpen, setMapOpen] = useState(false);
+  // Routes that lead into SugarfishScreen:
+  //  • insights  (default — shows Sugarfish)
+  //  • historyDetail  (past-tab → tap restaurant header → shows that restaurant)
+  const entry = state.historyIdx != null ? HISTORY_DATA[state.historyIdx] : null;
+  const restaurantName = entry?.restaurant ?? "Sugarfish";
+  const spot = entry?.spot ?? SUGARFISH_SPOT;
+  const usuallyWith = entry
+    ? entry.diners
+        .filter((d) => d !== "you")
+        .map((d) => ({ name: DINERS[d].name, color: DINERS[d].color, initials: DINERS[d].initials }))
+    : [
+        { name: "Maya Chen", color: "#CFAFA6", initials: "MC" },
+        { name: "Sam Carpenter", color: "#AFCFCB", initials: "SC" },
+        { name: "Jake Martinez", color: "#F6C6B3", initials: "JM" },
+      ];
+  const backScreen: Screen = state.historyIdx != null ? "historyDetail" : "insights";
   return (
     <div className="relative w-full h-full font-grotesk overflow-hidden flex flex-col" style={{ background: T.cream, color: T.ink }}>
       <StatusBar />
@@ -3008,8 +4106,8 @@ function SugarfishScreen({ dispatch }: RouterProps) {
       {/* Floating back button — above the map so it stays reachable even
           when the map is collapsed. */}
       <button
-        onClick={() => dispatch({ type: "GOTO", screen: "insights" })}
-        aria-label="Back to insights"
+        onClick={() => dispatch({ type: "GOTO", screen: backScreen })}
+        aria-label="Back"
         className="absolute z-20 grid place-items-center font-bold rounded-full transition active:scale-90"
         style={{
           left: "5%",
@@ -3018,12 +4116,12 @@ function SugarfishScreen({ dispatch }: RouterProps) {
           aspectRatio: "1",
           background: T.cream,
           color: T.ink,
-          fontSize: "5.4cqw",
+          fontSize: "7.4cqw",
           lineHeight: 1,
           boxShadow: "0 4px 12px rgba(0,0,0,0.25)",
         }}
       >
-        ‹
+        ❮
       </button>
 
 
@@ -3094,13 +4192,13 @@ function SugarfishScreen({ dispatch }: RouterProps) {
               className="rounded-full grid place-items-center"
               style={{ width: "10.8cqw", height: "10.8cqw", background: T.accent, fontSize: "4.8cqw" }}
             >
-              🐟
+              {spot.emoji}
             </span>
           </div>
         )}
       </div>
 
-      {/* Fish badge anchor — zero-height sibling that sits exactly on the
+      {/* Spot badge anchor — zero-height sibling that sits exactly on the
           map/body boundary in the flex column. The badge renders as an
           absolute child with overflow visible so it straddles both. */}
       <div className="relative" style={{ height: 0, overflow: "visible" }}>
@@ -3115,7 +4213,7 @@ function SugarfishScreen({ dispatch }: RouterProps) {
             fontSize: "8.4cqw",
           }}
         >
-          🐟
+          {spot.emoji}
         </div>
       </div>
 
@@ -3125,21 +4223,21 @@ function SugarfishScreen({ dispatch }: RouterProps) {
         data-lenis-prevent
         style={{ overscrollBehavior: "contain", WebkitOverflowScrolling: "touch" }}
       >
-      {/* Restaurant header — extra top padding to clear the floating fish badge */}
+      {/* Restaurant header — extra top padding to clear the floating spot badge */}
       <div className="text-center" style={{ paddingTop: "14cqw" }}>
         <div className="font-grotesk font-bold" style={{ fontSize: "6.6cqw", letterSpacing: "-0.02em" }}>
-          Sugarfish
+          {restaurantName}
         </div>
         <div style={{ fontSize: "3.1cqw", color: T.gray, marginTop: "0.7cqw" }}>
-          1345 2nd St., Santa Monica, CA 90401
+          {spot.address}
         </div>
       </div>
 
       {/* Stats */}
       <div className="flex" style={{ gap: "3.6cqw", padding: "4.8cqw 6cqw 0" }}>
         {[
-          { label: "Last Visit", value: "Today" },
-          { label: "Average Spend", value: "$144.98" },
+          { label: "Last Visit", value: spot.lastVisit },
+          { label: "Average Spend", value: spot.avgSpend },
         ].map((s) => (
           <div
             key={s.label}
@@ -3168,11 +4266,7 @@ function SugarfishScreen({ dispatch }: RouterProps) {
           <span>🍴</span> Most Ordered
         </div>
         <div style={{ marginTop: "2.4cqw", display: "flex", flexDirection: "column", gap: "1.9cqw" }}>
-          {[
-            ["Maki Roll", "$7.00"],
-            ["Yellowtail Sashimi", "$12.00"],
-            ["Grilled Salmon", "$18.00"],
-          ].map(([item, price]) => (
+          {spot.mostOrdered.map(([item, price]) => (
             <div key={item} className="flex items-center justify-between">
               <span style={{ fontSize: "3.8cqw", fontWeight: 500 }}>{item}</span>
               <span style={{ fontSize: "3.4cqw", color: T.gray, fontWeight: 500 }}>{price}</span>
@@ -3190,11 +4284,7 @@ function SugarfishScreen({ dispatch }: RouterProps) {
           <span>◎</span> Usually with
         </div>
         <div style={{ marginTop: "2.4cqw", display: "flex", gap: "2.4cqw", flexWrap: "wrap" }}>
-          {[
-            { name: "Maya Chen", color: "#CFAFA6", initials: "MC" },
-            { name: "Sam Chisick", color: "#AFCFCB", initials: "SC" },
-            { name: "Jake Martinez", color: "#F6C6B3", initials: "JM" },
-          ].map((f) => (
+          {usuallyWith.map((f) => (
             <div
               key={f.name}
               className="flex items-center"
@@ -3226,11 +4316,7 @@ function SugarfishScreen({ dispatch }: RouterProps) {
           <span>↻</span> Your visits
         </div>
         <div style={{ marginTop: "1.8cqw", display: "flex", flexDirection: "column", gap: "1.4cqw" }}>
-          {[
-            { date: "Today", price: "$82.08", with: "Maya, Sam, Jake" },
-            { date: "Jan 5, 2026", price: "$144.98", with: "Maya, Sam" },
-            { date: "Nov 12, 2025", price: "$167.40", with: "Sam" },
-          ].map((v, i) => (
+          {spot.visits.map((v, i) => (
             <div
               key={i}
               className="flex items-center"
@@ -3466,7 +4552,7 @@ function InsightsScreen({ dispatch }: RouterProps) {
       <StatusBar />
       <div className="flex items-center justify-between" style={{ padding: "3.4cqw 6cqw 2.4cqw" }}>
         <button
-          onClick={() => dispatch({ type: "GOTO", screen: "success" })}
+          onClick={() => dispatch({ type: "GOTO", screen: "dashboard" })}
           aria-label="Back"
           className="grid place-items-center font-bold rounded-full transition active:scale-90"
           style={{
@@ -3474,12 +4560,12 @@ function InsightsScreen({ dispatch }: RouterProps) {
             aspectRatio: "1",
             background: T.ink,
             color: T.cream,
-            fontSize: "5.4cqw",
+            fontSize: "7.4cqw",
             lineHeight: 1,
             boxShadow: "0 4px 12px rgba(14,14,14,0.18)",
           }}
         >
-          ‹
+          ❮
         </button>
         <span className="font-bold" style={{ fontSize: "5.3cqw", letterSpacing: "-0.02em" }}>
           Smart Receipts
@@ -3737,7 +4823,7 @@ function ItemizedScreen({ state, dispatch }: RouterProps) {
       <StatusBar />
       <div className="flex items-center justify-between" style={{ padding: "3.4cqw 6cqw 2.4cqw" }}>
         <button
-          onClick={() => dispatch({ type: "GOTO", screen: "success" })}
+          onClick={() => dispatch({ type: "GOTO", screen: "dashboard" })}
           aria-label="Back"
           className="grid place-items-center font-bold rounded-full transition active:scale-90"
           style={{
@@ -3745,12 +4831,12 @@ function ItemizedScreen({ state, dispatch }: RouterProps) {
             aspectRatio: "1",
             background: T.ink,
             color: T.cream,
-            fontSize: "5.4cqw",
+            fontSize: "7.4cqw",
             lineHeight: 1,
             boxShadow: "0 4px 12px rgba(14,14,14,0.18)",
           }}
         >
-          ‹
+          ❮
         </button>
         <span className="font-bold" style={{ fontSize: "5.3cqw", letterSpacing: "-0.02em" }}>
           Itemized Bill
@@ -3964,6 +5050,244 @@ function BillRow({ k, v, bold }: { k: string; v: string; bold?: boolean }) {
 }
 
 // ─────────────────────────────────────────────────────────────────
+// History detail — past-tab view opened from dashboard history row.
+// Restaurant header is tappable and routes to SugarfishScreen
+// (the generic "restaurant page" template).
+// ─────────────────────────────────────────────────────────────────
+
+function HistoryDetailScreen({ state, dispatch }: RouterProps) {
+  const entry = state.historyIdx != null ? HISTORY_DATA[state.historyIdx] : null;
+  if (!entry) return null;
+
+  const subtotalsByDiner = entry.diners.map((d) => ({
+    diner: d,
+    name: DINERS[d].name,
+    color: DINERS[d].color,
+    initials: DINERS[d].initials,
+    amount: entry.items.reduce((sum, it) => {
+      if (!it.claimedBy.includes(d)) return sum;
+      return sum + (it.qty * it.price) / it.claimedBy.length;
+    }, 0),
+  }));
+  const billSubtotal = subtotalsByDiner.reduce((a, b) => a + b.amount, 0);
+  const billTip = billSubtotal * entry.tipPct;
+  const billTax = billSubtotal * TAX_RATE;
+  const billTotal = billSubtotal + billTip + billTax;
+
+  return (
+    <div className="relative w-full h-full font-grotesk flex flex-col" style={{ background: T.cream, color: T.ink }}>
+      <StatusBar />
+      <div className="flex items-center justify-between" style={{ padding: "3.4cqw 6cqw 2.4cqw" }}>
+        <button
+          onClick={() => dispatch({ type: "GOTO", screen: "dashboard" })}
+          aria-label="Back to home"
+          className="grid place-items-center font-bold rounded-full transition active:scale-90"
+          style={{
+            width: "11%",
+            aspectRatio: "1",
+            background: T.ink,
+            color: T.cream,
+            fontSize: "7.4cqw",
+            lineHeight: 1,
+            boxShadow: "0 4px 12px rgba(14,14,14,0.18)",
+          }}
+        >
+          ❮
+        </button>
+        <span className="font-bold" style={{ fontSize: "5.3cqw", letterSpacing: "-0.02em" }}>
+          Past tab
+        </span>
+        <span style={{ width: "11%" }} />
+      </div>
+
+      {/* Tappable restaurant header — opens the restaurant page (Sugarfish template) */}
+      <div style={{ padding: "0 6cqw 2.4cqw" }}>
+        <button
+          onClick={() => dispatch({ type: "GOTO", screen: "sugarfish" })}
+          className="w-full text-left transition active:scale-[0.99] hover:bg-black/[0.02]"
+          style={{
+            background: T.white,
+            borderRadius: "3.6cqw",
+            padding: "2.9cqw 3.6cqw",
+            border: "1px solid rgba(14,14,14,0.06)",
+            display: "flex",
+            alignItems: "center",
+            gap: "3cqw",
+          }}
+          aria-label={`Open ${entry.restaurant} page`}
+        >
+          <span className="flex-1 min-w-0">
+            <span className="block font-bold" style={{ fontSize: "3.8cqw", letterSpacing: "-0.01em" }}>
+              {entry.restaurant} · {entry.tableNo}
+            </span>
+            <span className="block" style={{ fontSize: "2.9cqw", color: T.gray, marginTop: "0.5cqw" }}>
+              {entry.date} · {entry.diners.length} diners
+            </span>
+          </span>
+          <span style={{ fontSize: "4.2cqw", color: T.gray, flexShrink: 0 }}>›</span>
+        </button>
+      </div>
+
+      {/* Body — items + per-diner */}
+      <div
+        className="flex-1 overflow-y-auto no-scrollbar"
+        data-lenis-prevent
+        style={{ padding: "0 6cqw 3.6cqw", overscrollBehavior: "contain", WebkitOverflowScrolling: "touch" }}
+      >
+        <div
+          className="uppercase font-semibold"
+          style={{ fontSize: "2.9cqw", color: T.gray, letterSpacing: "0.16em", marginTop: "1.2cqw", marginBottom: "1.8cqw" }}
+        >
+          Items
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: "1.7cqw" }}>
+          {entry.items.map((item, i) => {
+            const lineTotal = item.qty * item.price;
+            return (
+              <div
+                key={`${item.name}-${i}`}
+                className="flex items-center"
+                style={{
+                  background: T.white,
+                  borderRadius: "3cqw",
+                  padding: "2.4cqw 3cqw",
+                  gap: "3cqw",
+                  border: "1px solid rgba(14,14,14,0.06)",
+                }}
+              >
+                <span className="flex shrink-0">
+                  {item.claimedBy.slice(0, 4).map((d, j) => (
+                    <span
+                      key={d}
+                      className="aspect-square rounded-full grid place-items-center font-bold"
+                      style={{
+                        width: "7.2cqw",
+                        background: DINERS[d].color,
+                        color: d === "you" ? T.white : T.ink,
+                        border: `1.5px solid ${T.cream}`,
+                        marginLeft: j === 0 ? 0 : "-1.7cqw",
+                        fontSize: "2.2cqw",
+                        zIndex: 4 - j,
+                      }}
+                    >
+                      {DINERS[d].initials}
+                    </span>
+                  ))}
+                </span>
+                <span className="flex-1 min-w-0">
+                  <span
+                    className="block font-medium"
+                    style={{
+                      fontSize: "3.4cqw",
+                      lineHeight: 1.25,
+                      overflow: "hidden",
+                      display: "-webkit-box",
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: "vertical",
+                      wordBreak: "break-word",
+                    }}
+                  >
+                    {item.qty > 1 ? `${item.qty}× ` : ""}
+                    {item.name}
+                  </span>
+                  {item.claimedBy.length > 1 && (
+                    <span className="block" style={{ fontSize: "2.4cqw", color: T.gray, marginTop: "0.5cqw" }}>
+                      split {item.claimedBy.length} ways
+                    </span>
+                  )}
+                </span>
+                <span
+                  className="font-grotesk font-bold tabular-nums text-right"
+                  style={{ fontSize: "3.4cqw", minWidth: "14cqw", flexShrink: 0, fontVariantNumeric: "tabular-nums" }}
+                >
+                  {fmt(lineTotal)}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+
+        <div
+          className="uppercase font-semibold"
+          style={{ fontSize: "2.9cqw", color: T.gray, letterSpacing: "0.16em", marginTop: "3.6cqw", marginBottom: "1.8cqw" }}
+        >
+          Per person
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: "1.4cqw" }}>
+          {subtotalsByDiner.map((p) => (
+            <div
+              key={p.diner}
+              className="flex items-center"
+              style={{ padding: "1.7cqw 0", borderBottom: "1px solid rgba(14,14,14,0.06)", gap: "3cqw" }}
+            >
+              <span
+                className="rounded-full grid place-items-center font-bold shrink-0"
+                style={{
+                  width: "9.6cqw",
+                  height: "9.6cqw",
+                  background: p.color,
+                  color: p.diner === "you" ? T.white : T.ink,
+                  fontSize: "2.9cqw",
+                }}
+              >
+                {p.initials}
+              </span>
+              <span className="flex-1 font-semibold" style={{ fontSize: "3.6cqw" }}>
+                {p.name}
+              </span>
+              <span
+                className="font-grotesk font-bold tabular-nums text-right"
+                style={{ fontSize: "3.8cqw", minWidth: "18cqw", flexShrink: 0, fontVariantNumeric: "tabular-nums" }}
+              >
+                {fmt(p.amount * (1 + entry.tipPct + TAX_RATE))}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        <div
+          style={{
+            background: T.ink,
+            color: T.cream,
+            borderRadius: "3.6cqw",
+            padding: "3.6cqw 4.2cqw",
+            marginTop: "3.6cqw",
+            display: "flex",
+            flexDirection: "column",
+            gap: "1.4cqw",
+            fontSize: "3.1cqw",
+          }}
+        >
+          <BillRow k="Subtotal" v={fmt(billSubtotal)} />
+          <BillRow k={`Tip (${Math.round(entry.tipPct * 100)}%)`} v={fmt(billTip)} />
+          <BillRow k="Tax (8.25%)" v={fmt(billTax)} />
+          <div style={{ borderTop: "1px solid rgba(248,244,240,0.15)", paddingTop: "1.4cqw" }}>
+            <BillRow k="Total" v={fmt(billTotal)} bold />
+          </div>
+        </div>
+      </div>
+
+      {/* Primary action — open restaurant page */}
+      <div style={{ padding: "2.4cqw 6cqw 6cqw" }}>
+        <button
+          onClick={() => dispatch({ type: "GOTO", screen: "sugarfish" })}
+          className="w-full font-bold transition active:scale-95"
+          style={{
+            borderRadius: "999px",
+            background: T.ink,
+            color: T.cream,
+            padding: "4.8cqw 0",
+            fontSize: "3.8cqw",
+          }}
+        >
+          View {entry.restaurant} →
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────
 // Replay screen — end-of-demo prompt
 // ─────────────────────────────────────────────────────────────────
 
@@ -3978,46 +5302,32 @@ function ReplayScreen({ dispatch }: RouterProps) {
       {/* Centered hero */}
       <div className="flex-1 flex flex-col items-center justify-center" style={{ padding: "0 7%" }}>
         <motion.div
-          className="rounded-full grid place-items-center"
+          className="rounded-[30%] grid place-items-center overflow-hidden"
           style={{
             width: "30%",
             aspectRatio: "1",
-            background: T.accent,
-            color: "#fff",
-            fontSize: "12cqw",
-            boxShadow: "0 18px 40px -14px rgba(255,124,97,0.55)",
+            background: T.ink,
+            boxShadow: "0 18px 40px -14px rgba(14,14,14,0.55)",
           }}
           initial={{ scale: 0, rotate: -180 }}
           animate={{ scale: 1, rotate: 0 }}
           transition={{ type: "spring", stiffness: 200, damping: 18 }}
         >
-          ✦
+          <img
+            src={LOGO}
+            alt="Tabby"
+            className="block w-full h-full object-contain"
+            draggable={false}
+          />
         </motion.div>
 
         <div
-          className="uppercase font-semibold"
-          style={{
-            fontSize: "3.6cqw",
-            letterSpacing: "0.24em",
-            color: T.gray,
-            marginTop: "4.8cqw",
-          }}
-        >
-          end of demo
-        </div>
-        <div
           className="font-grotesk font-bold text-center"
-          style={{ fontSize: "10.8cqw", letterSpacing: "-0.03em", marginTop: "1.8cqw", lineHeight: 1.05 }}
+          style={{ fontSize: "10.8cqw", letterSpacing: "-0.03em", marginTop: "4.8cqw", lineHeight: 1.05 }}
         >
           That&apos;s
           <br />
           Tabby.
-        </div>
-        <div
-          className="text-center"
-          style={{ fontSize: "4.1cqw", color: T.gray, marginTop: "3.6cqw", lineHeight: 1.45, maxWidth: "92%" }}
-        >
-          2 minutes from sit-down to settled. Replay the demo, or join the waitlist to be first in line.
         </div>
       </div>
 

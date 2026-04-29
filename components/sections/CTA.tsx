@@ -113,15 +113,6 @@ export function CTA() {
                     d="M 60, 60 m -50, 0 a 50,50 0 1,1 100,0 a 50,50 0 1,1 -100,0"
                   />
                 </defs>
-                <circle
-                  cx="60"
-                  cy="60"
-                  r="54"
-                  stroke="rgba(255,124,97,0.4)"
-                  strokeWidth="0.7"
-                  strokeDasharray="2 3"
-                  fill="none"
-                />
                 <text
                   fill="rgb(255,124,97)"
                   style={{

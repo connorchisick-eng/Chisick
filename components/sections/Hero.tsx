@@ -231,15 +231,16 @@ export function Hero() {
           </svg>
         </button>
 
-        {/* Viewport — overflow hidden, pointer events captured here for drag */}
+        {/* Viewport — only horizontal overflow is clipped so the phone's
+            hover-lift can escape vertically without being cropped. */}
         <div
           ref={viewportRef}
-          className="overflow-hidden cursor-grab select-none touch-pan-y"
-          style={{ touchAction: "pan-y" }}
+          className="overflow-x-hidden cursor-grab select-none touch-pan-y"
+          style={{ touchAction: "pan-y", overflowY: "visible" }}
         >
           <div
             ref={trackRef}
-            className="flex items-start gap-5 lg:gap-6 py-4"
+            className="flex items-start gap-5 lg:gap-6 py-6 md:py-8"
             style={{
               transform: `translate3d(${offset}px, 0, 0)`,
               transition: "transform 0.7s cubic-bezier(0.22, 1, 0.36, 1)",

@@ -219,20 +219,21 @@ html.lenis body { height: auto; }
    phone always fits both axes. Reserve enough vertical room for the
    narrative panel above (which wraps on mobile) + page padding. */
 .demo-phone-shell {
-  /* mobile reserve ~160px (narrative + dots + padding). Tighter than
-     before so the phone takes a bit more of the viewport. */
+  /* Nav/Footer hidden on /demo — only narrative + page padding to reserve.
+     Reserve accounts for page padding, top bar, top bar margin-bottom,
+     optional "Pro · Coming later" pill row, and bottom padding. */
   width: min(
-    calc((100svh - 160px) * 9 / 19.5),
+    calc((100svh - 180px) * 9 / 19.5),
     calc(100vw - 32px),
-    420px
+    480px
   );
 }
 @media (min-width: 768px) {
   .demo-phone-shell {
     width: min(
-      calc((100svh - 80px) * 9 / 19.5),
+      calc((100svh - 130px) * 9 / 19.5),
       calc(100vw - 64px),
-      554px
+      640px
     );
   }
 }

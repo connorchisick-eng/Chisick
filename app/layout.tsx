@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { SmoothScroll } from "@/components/SmoothScroll";
-import { Nav } from "@/components/Nav";
-import { Footer } from "@/components/Footer";
+import { SiteChrome } from "@/components/SiteChrome";
 import { Ready } from "@/components/Ready";
 import { HelpAgent } from "@/components/HelpAgent";
 import { HashScroller } from "@/components/HashScroller";
@@ -12,12 +11,21 @@ export const metadata: Metadata = {
   title: "Tabby — Enjoy the meal, not the math.",
   description:
     "Scan the receipt. Claim your items. Settle up before you leave the table. Tabby launches Q4 2026.",
-  metadataBase: new URL("https://tabby.app"),
+  metadataBase: new URL("https://splittabby.com"),
+  alternates: { canonical: "/" },
   openGraph: {
     title: "Tabby — Enjoy the meal, not the math.",
     description:
       "Scan the receipt. Claim your items. Settle up before you leave the table.",
     type: "website",
+    url: "https://splittabby.com",
+    siteName: "Tabby",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Tabby — Enjoy the meal, not the math.",
+    description:
+      "Scan the receipt. Claim your items. Settle up before you leave the table.",
   },
 };
 
@@ -33,9 +41,7 @@ export default function RootLayout({
           <Ready />
           <SmoothScroll />
           <HashScroller />
-          <Nav />
-          {children}
-          <Footer />
+          <SiteChrome>{children}</SiteChrome>
           <HelpAgent />
         </PostHogProvider>
       </body>

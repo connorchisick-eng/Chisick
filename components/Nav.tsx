@@ -171,10 +171,8 @@ export function Nav() {
 
             <div className="flex items-center gap-3">
               {/* Live Demo — standout external CTA */}
-              <a
-                href="https://tabbydemo.com"
-                target="_blank"
-                rel="noopener noreferrer"
+              <Link
+                href="/demo"
                 className={clsx(
                   "hidden md:inline-flex items-center gap-2 rounded-full text-sm font-semibold transition-all duration-300 border",
                   "px-4 py-2",
@@ -183,23 +181,9 @@ export function Nav() {
                     : "bg-transparent border-accent/40 text-accent hover:bg-accent/8 hover:border-accent",
                 )}
               >
-                <span
-                  aria-hidden
-                  className="relative inline-flex"
-                  style={{ width: "8px", height: "8px" }}
-                >
-                  <span
-                    className="absolute inset-0 rounded-full"
-                    style={{ background: "rgb(2,213,124)" }}
-                  />
-                  <span
-                    className="absolute inset-0 rounded-full animate-ping"
-                    style={{ background: "rgb(2,213,124)", opacity: 0.6 }}
-                  />
-                </span>
                 Live Demo
                 <Arrow className="arrow" />
-              </a>
+              </Link>
               <div className="relative hidden sm:inline-flex">
                 {/* Black Tabby cat peeking up from behind the CTA — head only
                     (the asset is taller than the visible window; overflow-hidden
@@ -291,27 +275,21 @@ export function Nav() {
                   {l.label}
                 </motion.a>
               ))}
-              <motion.a
-                href="https://tabbydemo.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => setOpen(false)}
+              <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.55, ease: [0.22, 1, 0.36, 1], duration: 0.6 }}
-                className="inline-flex items-center gap-3 rounded-full border border-accent/50 bg-transparent text-accent px-6 py-3 text-lg font-bold mt-4"
+                className="mt-4"
               >
-                <span
-                  aria-hidden
-                  className="relative inline-flex"
-                  style={{ width: "10px", height: "10px" }}
+                <Link
+                  href="/demo"
+                  onClick={() => setOpen(false)}
+                  className="inline-flex items-center gap-3 rounded-full border border-accent/50 bg-transparent text-accent px-6 py-3 text-lg font-bold"
                 >
-                  <span className="absolute inset-0 rounded-full" style={{ background: "rgb(2,213,124)" }} />
-                  <span className="absolute inset-0 rounded-full animate-ping" style={{ background: "rgb(2,213,124)", opacity: 0.6 }} />
-                </span>
-                Live Demo
-                <span className="arrow">→</span>
-              </motion.a>
+                  Live Demo
+                  <span className="arrow">→</span>
+                </Link>
+              </motion.div>
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}

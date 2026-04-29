@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 import { InteractiveDemo } from "@/components/demo/InteractiveDemo";
 import { ScrollToTop } from "@/components/ScrollToTop";
 
@@ -10,8 +9,6 @@ export const metadata: Metadata = {
 };
 
 export default function DemoPage() {
-  if (process.env.NEXT_PUBLIC_DEMO_ENABLED !== "1") notFound();
-
   return (
     <main className="relative bg-surface-alt min-h-screen overflow-hidden">
       <ScrollToTop />
@@ -25,10 +22,12 @@ export default function DemoPage() {
         }}
       />
 
-      {/* Single section — sits below the fixed 104px nav, then fills viewport */}
+      {/* Demo takes the whole viewport — Nav/Footer hidden via SiteChrome.
+          The "Back to tabby" pill lives in InteractiveDemo's top bar so it
+          sits in-row with the narrative title. */}
       <section
-        className="relative mx-auto max-w-[1280px] px-6 lg:px-12"
-        style={{ paddingTop: "112px", paddingBottom: "20px" }}
+        className="relative mx-auto max-w-[1280px] px-6 md:px-16"
+        style={{ paddingTop: "32px", paddingBottom: "20px" }}
       >
         <InteractiveDemo />
       </section>
