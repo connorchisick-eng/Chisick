@@ -1,10 +1,15 @@
 import { ImageResponse } from "next/og";
+import { readFile } from "fs/promises";
+import { join } from "path";
 
-export const runtime = "edge";
 export const size = { width: 64, height: 64 };
 export const contentType = "image/png";
 
-export default function Icon() {
+export default async function Icon() {
+  const logoPath = join(process.cwd(), "public", "ante-logo.png");
+  const logoBuffer = await readFile(logoPath);
+  const logoBase64 = `data:image/png;base64,${logoBuffer.toString("base64")}`;
+
   return new ImageResponse(
     (
       <div
@@ -16,12 +21,7 @@ export default function Icon() {
           justifyContent: "center",
         }}
       >
-        <img
-          src="https://framerusercontent.com/images/8ziC1H7zLZIh36Br3ZlUaplUabg.png"
-          width={64}
-          height={64}
-          alt=""
-        />
+        <img src={logoBase64} width={64} height={64} alt="" />
       </div>
     ),
     size,
