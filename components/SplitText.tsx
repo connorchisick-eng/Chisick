@@ -1,4 +1,5 @@
 "use client";
+import * as React from "react";
 import { useEffect, useRef } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -71,7 +72,7 @@ export function SplitText({
     </span>
   ));
 
-  const Tag = as as keyof JSX.IntrinsicElements;
+  const Tag = as as keyof React.JSX.IntrinsicElements;
   return (
     // @ts-expect-error — dynamic tag ref typing
     <Tag ref={ref} className={className} aria-label={text}>

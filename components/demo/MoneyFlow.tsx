@@ -1,5 +1,5 @@
 "use client";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 
 // Animated 4-node sequence diagram of money movement.

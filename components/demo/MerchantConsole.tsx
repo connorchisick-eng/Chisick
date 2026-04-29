@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 
 // Live "merchant POS" view — the partner-facing surface that the
 // Tabby-Merchant-API powers. Tabs flow in; settled rows light up green.

@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import { Arrow } from "./icons";
 
 // Light-touch US/intl phone mask: strips non-digits, pretty-prints US

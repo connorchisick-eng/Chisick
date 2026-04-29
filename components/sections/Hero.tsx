@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { gsap } from "gsap";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "motion/react";
 import { ClawReveal } from "@/components/ClawReveal";
 import { Phone } from "@/components/Phone";
 import { Arrow } from "@/components/icons";
