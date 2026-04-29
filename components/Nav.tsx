@@ -40,13 +40,7 @@ export function Nav() {
   // Observe dark sections. Whenever one sits across the nav line (top 120px
   // of the viewport), mark the nav as "on dark" so text flips to cream.
   useEffect(() => {
-    const targets = Array.from(
-      document.querySelectorAll<HTMLElement>("[data-nav-invert]"),
-    );
-    if (!targets.length) {
-      setOnDark(false);
-      return;
-    }
+    const observed = new WeakSet<Element>();
     const active = new Set<Element>();
     const io = new IntersectionObserver(
       (entries) => {
@@ -57,14 +51,52 @@ export function Nav() {
         setOnDark(active.size > 0);
       },
       {
-        // Observation line is a 1px band at the vertical center of the nav.
-        // Section must cross this line to count as "under the nav."
-        rootMargin: "-48px 0px -100% 0px",
+        // Observation band sits behind the nav: from just below the
+        // header's top edge (24px) down to ~88% of the viewport. A section
+        // is "under the nav" while its bounding rect overlaps this band.
+        // (Previously "-100%" on the bottom produced a negative-height
+        // root rect which some browsers treat as never-intersecting, so
+        // the inversion missed the pinned StickyStack on first paint.)
+        rootMargin: "-24px 0px -88% 0px",
         threshold: 0,
       },
     );
-    targets.forEach((t) => io.observe(t));
-    return () => io.disconnect();
+
+    const observeAll = () => {
+      const targets = document.querySelectorAll<HTMLElement>(
+        "[data-nav-invert]",
+      );
+      let added = false;
+      targets.forEach((t) => {
+        if (!observed.has(t)) {
+          observed.add(t);
+          io.observe(t);
+          added = true;
+        }
+      });
+      if (!targets.length) setOnDark(false);
+      return added;
+    };
+
+    observeAll();
+
+    // The HowItWorks resolver mounts the StickyStack/Swiper *after* hydration,
+    // so the nav's first query can miss it. Watch for late additions and
+    // observe them as they appear.
+    const mo = new MutationObserver(() => {
+      observeAll();
+    });
+    mo.observe(document.body, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ["data-nav-invert"],
+    });
+
+    return () => {
+      mo.disconnect();
+      io.disconnect();
+    };
   }, [pathname]);
 
   useEffect(() => {

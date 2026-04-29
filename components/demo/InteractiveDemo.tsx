@@ -7,10 +7,22 @@ import {
   useState,
 } from "react";
 import Link from "next/link";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
+import type { Variants } from "motion/react";
 import { clsx } from "clsx";
 import { LOGO } from "@/lib/images";
 import { Arrow } from "@/components/icons";
+import {
+  PHONE_ASPECT,
+  PHONE_FRAME_SRC,
+  PHONE_INSETS,
+} from "@/lib/phoneInsets";
+import { DemoOnboarding } from "@/components/demo/DemoOnboarding";
+import { FloatingCtas } from "@/components/demo/FloatingCtas";
+import { useEscapeClose } from "@/lib/useEscapeClose";
+import { useReducedMotion } from "@/lib/useReducedMotion";
 
 // ─────────────────────────────────────────────────────────────────
 // Tabby palette — locked to Figma tokens
@@ -425,12 +437,47 @@ const STEP_LABEL: Record<Screen, string> = {
   replay: "Replay",
 };
 
+// Phase grouping — three acts of the demo. Used by the narrative side
+// panel to give users a sense of "where they are in the story."
+type PhaseId = 1 | 2 | 3;
+const PHASE_LABEL: Record<PhaseId, string> = {
+  1: "Setup",
+  2: "Settle",
+  3: "Aftermath",
+};
+const PHASES: Record<Screen, PhaseId> = {
+  dashboard: 1,
+  friends: 1,
+  camera: 1,
+  scanning: 1,
+  items: 1,
+  tip: 2,
+  payment: 2,
+  card: 2,
+  pool: 2,
+  tabbyCard: 2,
+  success: 3,
+  itemized: 3,
+  insights: 3,
+  sugarfish: 3,
+  historyDetail: 3,
+  replay: 3,
+};
+
 // ─────────────────────────────────────────────────────────────────
 // Main
 // ─────────────────────────────────────────────────────────────────
 
+// Threshold past which navigating away from the demo prompts a "are you
+// sure?" popover, since the user has already invested time stepping through
+// scenes. Earlier scenes are low-investment — let users leave silently.
+const EXIT_CONFIRM_AFTER_STEP = 5;
+
 export function InteractiveDemo() {
+  const router = useRouter();
   const [state, dispatch] = useReducer(reducer, INITIAL);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [exitConfirmOpen, setExitConfirmOpen] = useState(false);
 
   const yourSubtotal = shareForDiner(state.claims, state.customSplits, "you");
   const tipPct = typeof state.tipPct === "number" ? state.tipPct : 0;
@@ -441,7 +488,7 @@ export function InteractiveDemo() {
   const stepIdx = STEP_ORDER.indexOf(state.screen);
 
   return (
-    <div className="mx-auto max-w-[1100px] flex flex-col">
+    <div className="mx-auto max-w-[1440px] flex flex-col">
       {/* Top bar — two edge-aligned groups (back+title on left, stepper
           + label + reset on right) so the center column stays open and
           leaves room for the floating Pro badge on pro screens.
@@ -455,15 +502,70 @@ export function InteractiveDemo() {
             : "mb-4 md:mb-6",
         )}
       >
-        <div className="flex items-center gap-3 md:gap-6 flex-wrap">
-          <Link
-            href="/"
+        <div className="flex items-center gap-3 md:gap-6 flex-wrap relative">
+          <button
+            type="button"
             aria-label="Back to Tabby"
-            className="group inline-flex items-center gap-2 rounded-full text-[11px] md:text-sm font-semibold transition-all duration-300 border bg-transparent border-accent/40 text-accent hover:bg-accent/[0.08] hover:border-accent px-3 py-1.5 md:px-4 md:py-2 shrink-0 leading-none"
+            onClick={() => {
+              if (stepIdx > EXIT_CONFIRM_AFTER_STEP) {
+                setExitConfirmOpen(true);
+              } else {
+                router.push("/");
+              }
+            }}
+            className="group inline-flex items-center gap-2 rounded-full text-[11px] md:text-sm font-semibold transition-all duration-300 border bg-transparent border-accent/40 text-accent hover:bg-accent/[0.08] hover:border-accent px-3 py-1.5 md:px-4 md:py-2 shrink-0 leading-none cursor-pointer"
           >
             <Arrow className="scale-x-[-1] transition-transform duration-300 group-hover:-translate-x-1" />
             <span className="leading-none hidden sm:inline">Back to tabby</span>
-          </Link>
+          </button>
+
+          {/* Mid-flow exit confirmation — drops down from the back button.
+              Only shown past EXIT_CONFIRM_AFTER_STEP. */}
+          <AnimatePresence>
+            {exitConfirmOpen && (
+              <motion.div
+                key="exit-confirm"
+                role="dialog"
+                aria-label="Leave the demo?"
+                initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -6, scale: 0.97 }}
+                transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                className="absolute top-[calc(100%+12px)] left-0 z-40 w-[300px] rounded-xl bg-surface shadow-[0_30px_60px_-15px_rgba(14,14,14,0.35)] border border-line/15 p-4"
+              >
+                <p className="font-grotesk font-bold text-body text-[0.95rem] leading-snug">
+                  Leave mid-flow?
+                </p>
+                <p className="mt-1.5 text-body/65 text-[0.82rem] leading-[1.5]">
+                  You&apos;re{" "}
+                  <span className="text-accent font-semibold">
+                    {Math.round(((stepIdx + 1) / STEP_ORDER.length) * 100)}%
+                  </span>{" "}
+                  through. The next scene shows{" "}
+                  {NARRATIVES[STEP_ORDER[Math.min(stepIdx + 1, STEP_ORDER.length - 1)]].title.replace(/\.$/, "").toLowerCase()}.
+                </p>
+                <div className="mt-4 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setExitConfirmOpen(false)}
+                    className="flex-1 px-3 py-2 rounded-full text-[0.78rem] font-semibold uppercase tracking-[0.18em] border border-line/15 text-body/65 hover:text-body hover:border-body/30 transition-colors"
+                  >
+                    Stay
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setExitConfirmOpen(false);
+                      router.push("/");
+                    }}
+                    className="flex-1 px-3 py-2 rounded-full text-[0.78rem] font-semibold uppercase tracking-[0.18em] bg-body text-surface hover:bg-accent transition-colors"
+                  >
+                    Leave
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
           <AnimatePresence mode="wait">
             <motion.h2
               key={state.screen}
@@ -479,7 +581,7 @@ export function InteractiveDemo() {
               }}
             >
               {state.screen === "dashboard" && (
-                <img
+                <Image
                   src={LOGO}
                   alt=""
                   aria-hidden
@@ -495,8 +597,41 @@ export function InteractiveDemo() {
         </div>
 
         <div className="flex items-center gap-3 md:gap-6 flex-wrap">
-          {/* Dot stepper — always visible; dots shrink on narrow. */}
-          <div className="flex items-center gap-1 md:gap-2.5">
+          {/* Mobile prev/next — replaces the cramped 15-dot stepper on
+              narrow viewports. Hidden at sm+ where dots fit comfortably. */}
+          <div className="flex sm:hidden items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                const prev = STEP_ORDER[Math.max(0, stepIdx - 1)];
+                dispatch({ type: "GOTO", screen: prev });
+              }}
+              disabled={stepIdx === 0}
+              aria-label="Previous scene"
+              className="w-7 h-7 rounded-full border border-line/15 text-body/65 hover:text-body hover:border-accent/40 disabled:opacity-30 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+            >
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden>
+                <path d="M7 1 L3 5 L7 9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const next = STEP_ORDER[Math.min(STEP_ORDER.length - 1, stepIdx + 1)];
+                dispatch({ type: "GOTO", screen: next });
+              }}
+              disabled={stepIdx === STEP_ORDER.length - 1}
+              aria-label="Next scene"
+              className="w-7 h-7 rounded-full border border-line/15 text-body/65 hover:text-body hover:border-accent/40 disabled:opacity-30 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+            >
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden>
+                <path d="M3 1 L7 5 L3 9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Dot stepper — visible at sm+; below sm we use the arrows above. */}
+          <div className="hidden sm:flex items-center gap-1 md:gap-2.5">
             {STEP_ORDER.map((s, i) => {
               const active = i === stepIdx;
               const done = i < stepIdx;
@@ -505,6 +640,7 @@ export function InteractiveDemo() {
                   key={s}
                   onClick={() => dispatch({ type: "GOTO", screen: s })}
                   aria-label={`Go to ${STEP_LABEL[s]}`}
+                  aria-current={active ? "step" : undefined}
                   className="rounded-full transition-all shrink-0"
                   style={{
                     height: 5,
@@ -530,6 +666,14 @@ export function InteractiveDemo() {
             style={{ color: T.gray }}
           >
             ↺ reset
+          </button>
+          <button
+            type="button"
+            onClick={() => setHelpOpen(true)}
+            aria-label="Re-open the demo intro"
+            className="w-7 h-7 rounded-full border border-line/15 text-body/55 hover:text-body hover:border-accent/40 hover:bg-accent/5 transition-colors flex items-center justify-center text-[0.78rem] font-semibold"
+          >
+            ?
           </button>
         </div>
       </div>
@@ -557,20 +701,248 @@ export function InteractiveDemo() {
         </div>
       )}
 
-      {/* Phone — flexes to fill all remaining vertical space. */}
-      <div className="flex-1 flex flex-col justify-start items-center min-h-0 pt-0 pb-2">
-        <PhoneShell>
-          <PhoneRouter
-            state={state}
-            dispatch={dispatch}
-            yourSubtotal={yourSubtotal}
-            yourTotal={yourTotal}
-            tip={tip}
-            tax={tax}
-          />
-        </PhoneShell>
+      {/* Body grid — narrative panel + phone. Stacks on mobile/tablet
+          with phone first, narrative below. Two-column at lg+ with the
+          narrative panel vertically centered against the phone in the
+          right column. */}
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(320px,420px)_1fr] gap-8 lg:gap-14 xl:gap-20 items-start lg:items-center flex-1 min-h-0">
+        <NarrativePanel
+          screen={state.screen}
+          stepIdx={stepIdx}
+          className="order-2 lg:order-1 lg:pt-2"
+        />
+        <div className="order-1 lg:order-2 flex flex-col justify-start items-center min-h-0 pt-0 pb-2 w-full">
+          <PhoneShell>
+            <PhoneRouter
+              state={state}
+              dispatch={dispatch}
+              yourSubtotal={yourSubtotal}
+              yourTotal={yourTotal}
+              tip={tip}
+              tax={tax}
+            />
+          </PhoneShell>
+        </div>
       </div>
+
+      {/* First-visit onboarding — auto-opens via localStorage on first
+          render, can be re-opened via the "?" button in the top bar. */}
+      <DemoOnboarding
+        forceOpen={helpOpen ? true : undefined}
+        onClose={() => setHelpOpen(false)}
+      />
+
+      {/* Persistent CTAs — visible on every scene except the final
+          replay screen, which already has its own prominent CTAs. */}
+      <FloatingCtas
+        visible={state.screen !== "replay"}
+        onSkipToRecap={() => dispatch({ type: "GOTO", screen: "replay" })}
+      />
     </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Narrative side panel — surfaces eyebrow / body / highlight per scene
+// ─────────────────────────────────────────────────────────────────
+
+// Variants for the scene-content slide. `direction` is +1 when stepping
+// forward through the demo, -1 when stepping back. New content slides in
+// from the side the user is moving *toward*; old content slides out the
+// opposite way. A small filter blur softens the swap without feeling
+// laggy. Children inherit the timing and animate in a quick cascade.
+const scenePanelVariants: Variants = {
+  initial: (direction: number) => ({
+    opacity: 0,
+    x: direction * 36,
+    filter: "blur(6px)",
+  }),
+  animate: {
+    opacity: 1,
+    x: 0,
+    filter: "blur(0px)",
+    transition: {
+      duration: 0.55,
+      ease: [0.22, 1, 0.36, 1],
+      when: "beforeChildren",
+      staggerChildren: 0.05,
+      delayChildren: 0.04,
+    },
+  },
+  exit: (direction: number) => ({
+    opacity: 0,
+    x: -direction * 36,
+    filter: "blur(6px)",
+    transition: { duration: 0.28, ease: [0.76, 0, 0.24, 1] },
+  }),
+};
+
+const sceneChildVariants: Variants = {
+  initial: { opacity: 0, y: 10 },
+  animate: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.45, ease: [0.22, 1, 0.36, 1] },
+  },
+};
+
+function NarrativePanel({
+  screen,
+  stepIdx,
+  className,
+}: {
+  screen: Screen;
+  stepIdx: number;
+  className?: string;
+}) {
+  const n = NARRATIVES[screen];
+  const phase = PHASES[screen];
+  const phaseLabel = PHASE_LABEL[phase];
+
+  // Track previous step so we can animate scene-content slide direction.
+  // +1 = moving forward, -1 = moving back (reset / dot-stepper jump back).
+  const prevStepIdxRef = useRef(stepIdx);
+  const direction =
+    stepIdx === prevStepIdxRef.current
+      ? 1
+      : stepIdx > prevStepIdxRef.current
+      ? 1
+      : -1;
+  useEffect(() => {
+    prevStepIdxRef.current = stepIdx;
+  }, [stepIdx]);
+
+  const reduced = useReducedMotion();
+
+  // First and last index of the current phase, for the in-phase progress bar
+  const phaseScreens = STEP_ORDER.filter((s) => PHASES[s] === phase);
+  const phaseStart = STEP_ORDER.indexOf(phaseScreens[0]);
+  const phaseEnd = STEP_ORDER.indexOf(phaseScreens[phaseScreens.length - 1]);
+  const phaseProgress =
+    phaseEnd === phaseStart
+      ? 1
+      : (stepIdx - phaseStart) / (phaseEnd - phaseStart);
+
+  return (
+    <aside className={clsx("relative w-full", className)}>
+      {/* Phase chip — only animates when the *phase* actually changes,
+          not on every scene step. Keyed on phase, not screen. */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={phase}
+          initial={reduced ? false : { opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={reduced ? { opacity: 1 } : { opacity: 0, y: -4 }}
+          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+          className="flex items-center gap-3 text-[0.74rem] uppercase tracking-[0.28em] font-semibold text-body/45"
+        >
+          <span aria-hidden className="inline-block w-8 h-px bg-body/30" />
+          <span>
+            Act {phase}{" "}
+            <span className="text-body/30">·</span>{" "}
+            <span className="text-body">{phaseLabel}</span>
+          </span>
+        </motion.div>
+      </AnimatePresence>
+
+      {/* Scene content slot — clips horizontal slide to the panel width
+          and uses motion's layout animation so panel height tweens
+          smoothly when scenes have different content lengths. */}
+      <motion.div
+        layout={!reduced}
+        transition={{
+          layout: { duration: 0.5, ease: [0.22, 1, 0.36, 1] },
+        }}
+        className="relative overflow-hidden mt-8"
+      >
+        <AnimatePresence mode="wait" custom={direction}>
+          <motion.div
+            key={screen}
+            custom={direction}
+            variants={reduced ? undefined : scenePanelVariants}
+            initial={reduced ? false : "initial"}
+            animate={reduced ? { opacity: 1 } : "animate"}
+            exit={reduced ? { opacity: 1 } : "exit"}
+          >
+            <motion.div
+              variants={reduced ? undefined : sceneChildVariants}
+              className="text-[0.78rem] uppercase tracking-[0.26em] font-semibold text-body/55"
+            >
+              {n.eyebrow}
+            </motion.div>
+
+            <motion.h3
+              variants={reduced ? undefined : sceneChildVariants}
+              className="mt-4 font-grotesk font-bold text-body leading-[1.0] tracking-[-0.03em]"
+              style={{ fontSize: "clamp(2.1rem, 3.6vw, 3.3rem)" }}
+            >
+              {n.title}
+            </motion.h3>
+
+            <motion.p
+              variants={reduced ? undefined : sceneChildVariants}
+              className="mt-6 text-body/72 leading-[1.6] text-[1.08rem] md:text-[1.14rem]"
+            >
+              {n.body}
+            </motion.p>
+
+            {n.highlight && (
+              <motion.div
+                variants={reduced ? undefined : sceneChildVariants}
+                className="mt-6 rounded-xl border border-accent/30 bg-accent/[0.06] px-5 py-4"
+              >
+                <div className="flex items-start gap-3">
+                  <span
+                    aria-hidden
+                    className="mt-[0.55rem] w-2 h-2 rounded-full bg-accent flex-shrink-0"
+                  />
+                  <p className="text-body/78 leading-[1.55] text-[1rem]">
+                    {n.highlight}
+                  </p>
+                </div>
+              </motion.div>
+            )}
+          </motion.div>
+        </AnimatePresence>
+      </motion.div>
+
+      {/* Phase progress strip — stays mounted across scene changes.
+          Only the bar width and the digit counter tween/swap. */}
+      <div className="mt-10 flex items-center gap-3">
+        <span className="text-[0.7rem] uppercase tracking-[0.24em] font-semibold text-body/45 whitespace-nowrap">
+          {phaseLabel}
+        </span>
+        <span
+          aria-hidden
+          className="flex-1 h-[3px] rounded-full overflow-hidden"
+          style={{ background: "rgba(14,14,14,0.08)" }}
+        >
+          <motion.span
+            className="block h-full rounded-full"
+            style={{ background: "rgb(255,124,97)" }}
+            initial={false}
+            animate={{
+              width: `${Math.max(8, phaseProgress * 100).toFixed(0)}%`,
+            }}
+            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+          />
+        </span>
+        <span className="text-[0.7rem] uppercase tracking-[0.24em] font-semibold text-body/55 whitespace-nowrap relative inline-block min-w-[3.4em] text-right tabular-nums">
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.span
+              key={stepIdx}
+              initial={reduced ? false : { opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={reduced ? { opacity: 1 } : { opacity: 0, y: -6 }}
+              transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+              className="block"
+            >
+              {String(stepIdx + 1).padStart(2, "0")}/{STEP_ORDER.length}
+            </motion.span>
+          </AnimatePresence>
+        </span>
+      </div>
+    </aside>
   );
 }
 
@@ -679,11 +1051,16 @@ const NARRATIVES: Record<Screen, { eyebrow: string; title: string; body: string;
 // ─────────────────────────────────────────────────────────────────
 
 function PhoneShell({ children }: { children: React.ReactNode }) {
-  // Width-only sizing driven by .demo-phone-shell + aspect-[9/19.5]
-  // takes care of height — picks the smaller of vertical-bound and
-  // horizontal-bound width so the phone always fits both axes.
+  // Outer aspect locked to the iPhone 17 SVG bezel (450×920). Width-only
+  // sizing comes from .demo-phone-shell — the aspect inline style here
+  // takes care of the height. The bezel's dynamic island is part of the
+  // SVG itself, so no faux notch is rendered here.
   return (
-    <div className="demo-phone-shell relative aspect-[9/19.5] mx-auto">
+    <div
+      className="demo-phone-shell relative mx-auto"
+      style={{ aspectRatio: PHONE_ASPECT }}
+    >
+      {/* warm halo behind the device */}
       <div
         aria-hidden
         className="absolute -inset-12 rounded-full blur-3xl pointer-events-none"
@@ -692,21 +1069,50 @@ function PhoneShell({ children }: { children: React.ReactNode }) {
             "radial-gradient(circle at 50% 35%, rgba(255,124,97,0.32), transparent 60%)",
         }}
       />
+
+      {/* drop shadow for the device — sits behind the SVG so the bezel's
+          natural transparency doesn't get a hard rectangular shadow */}
       <div
-        className="absolute inset-0 rounded-[2.6rem] p-[0.5rem] shadow-[0_60px_120px_-30px_rgba(14,14,14,0.6)]"
-        style={{ background: "#0a0a0a" }}
+        aria-hidden
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          filter: "drop-shadow(0 60px 80px rgba(14,14,14,0.45))",
+        }}
       >
-        <div
-          className="relative w-full h-full rounded-[2.2rem] overflow-hidden"
-          style={{ background: T.cream, containerType: "inline-size" }}
-        >
-          <div
-            className="absolute top-1.5 left-1/2 -translate-x-1/2 rounded-full z-30"
-            style={{ background: "#0a0a0a", width: "28%", height: "2.6%" }}
-          />
-          {children}
-        </div>
+        <img
+          src={PHONE_FRAME_SRC}
+          alt=""
+          aria-hidden
+          className="block w-full h-full select-none"
+          draggable={false}
+        />
       </div>
+
+      {/* Inner screen content — clipped to the bezel cutout */}
+      <div
+        className="absolute overflow-hidden"
+        style={{
+          top: PHONE_INSETS.top,
+          bottom: PHONE_INSETS.bottom,
+          left: PHONE_INSETS.left,
+          right: PHONE_INSETS.right,
+          borderRadius: PHONE_INSETS.radius,
+          background: T.cream,
+          containerType: "inline-size",
+        }}
+      >
+        {children}
+      </div>
+
+      {/* Bezel overlay — stacks on top of screen content so the silver
+          chassis edges and dynamic island sit above the screen */}
+      <img
+        src={PHONE_FRAME_SRC}
+        alt=""
+        aria-hidden
+        className="absolute inset-0 w-full h-full pointer-events-none select-none"
+        draggable={false}
+      />
     </div>
   );
 }
@@ -725,15 +1131,16 @@ type RouterProps = {
 };
 
 function PhoneRouter(props: RouterProps) {
+  const reduced = useReducedMotion();
   return (
     <div className="absolute inset-0">
       <AnimatePresence mode="wait">
         <motion.div
           key={props.state.screen}
-          initial={{ opacity: 0 }}
+          initial={reduced ? false : { opacity: 0 }}
           animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.32 }}
+          exit={reduced ? { opacity: 1 } : { opacity: 0 }}
+          transition={{ duration: reduced ? 0 : 0.32 }}
           className="absolute inset-0"
         >
           {props.state.screen === "camera" && <CameraScreen {...props} />}
@@ -1382,6 +1789,9 @@ function SplitModal({
   const numerator = Math.min(Math.max(modal.tempDenom, 1), TABLE_SIZE - 1);
   const customShare = (lineTotal * numerator) / TABLE_SIZE;
 
+  // Escape closes the modal — keyboard a11y.
+  useEscapeClose(true, () => dispatch({ type: "CLOSE_SPLIT" }));
+
   return (
     <>
       {/* Tap-out backdrop */}
@@ -1592,6 +2002,8 @@ function CurrencyPicker({
     { code: "GBP", name: "Pound Sterling" },
     { code: "JPY", name: "Japanese Yen" },
   ];
+  // Escape closes the picker — keyboard a11y.
+  useEscapeClose(true, onClose);
   return (
     <>
       <button

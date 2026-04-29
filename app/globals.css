@@ -227,26 +227,28 @@ html.lenis body { height: auto; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { scrollbar-width: none; }
 
-/* Demo phone — width-only sizing so aspect-[9/19.5] drives height.
-   Pick the smaller of vertical-bound or horizontal-bound width so the
-   phone always fits both axes. Reserve enough vertical room for the
-   narrative panel above (which wraps on mobile) + page padding. */
+/* Demo phone — width-only sizing so the iPhone 17 bezel aspect 450:920
+   drives height. Pick the smaller of vertical-bound or horizontal-bound
+   width so the phone always fits both axes. The max-width caps are
+   bumped up vs. the old CSS shell because the SVG bezel insets (~5.6%
+   each side) leave a smaller inner content area, so we widen the outer
+   to keep the screen content visually similar. */
 .demo-phone-shell {
   /* Nav/Footer hidden on /demo — only narrative + page padding to reserve.
      Reserve accounts for page padding, top bar, top bar margin-bottom,
      optional "Pro · Coming later" pill row, and bottom padding. */
   width: min(
-    calc((100svh - 180px) * 9 / 19.5),
+    calc((100svh - 180px) * 450 / 920),
     calc(100vw - 32px),
-    480px
+    520px
   );
 }
 @media (min-width: 768px) {
   .demo-phone-shell {
     width: min(
-      calc((100svh - 130px) * 9 / 19.5),
+      calc((100svh - 130px) * 450 / 920),
       calc(100vw - 64px),
-      640px
+      680px
     );
   }
 }
@@ -256,51 +258,289 @@ html.lenis body { height: auto; }
 *::-webkit-scrollbar { display: none; width: 0; height: 0; }
 html, body { scrollbar-width: none; -ms-overflow-style: none; }
 
+/* Scroll affordance — apply to a wrapper around an overflow-y-auto
+   element so the bottom 28px fades into the cream phone background.
+   Tells the user "there's more below" without requiring a scrollbar.
+   The wrapper element gets the fade; the inner element scrolls. */
+.demo-scroll-fade {
+  position: relative;
+}
+.demo-scroll-fade::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 28px;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(248, 244, 240, 0) 0%,
+    rgba(248, 244, 240, 0.85) 70%,
+    rgba(248, 244, 240, 1) 100%
+  );
+  /* Only show the fade when there is content below the visible area.
+     Toggled via [data-can-scroll-down="true"] on the wrapper from JS. */
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.demo-scroll-fade[data-can-scroll-down="true"]::after {
+  opacity: 1;
+}
+
 /* legal page prose */
-.legal-prose { font-size: 1rem; line-height: 1.7; }
-.legal-prose h2 {
-  font-family: 'Cabinet Grotesk', sans-serif;
-  font-weight: 700;
-  font-size: 1.5rem;
-  letter-spacing: -0.02em;
-  color: rgb(var(--ink));
-  margin-top: 2.5rem;
-  margin-bottom: 0.75rem;
+.legal-prose {
+  font-size: 1.04rem;
+  line-height: 1.72;
+  color: rgb(var(--text-primary) / 0.78);
 }
 .legal-prose h3 {
   font-family: 'Cabinet Grotesk', sans-serif;
   font-weight: 700;
-  font-size: 1.05rem;
-  color: rgb(var(--ink));
-  margin-top: 1.5rem;
+  font-size: 1.08rem;
+  color: rgb(var(--text-primary));
+  margin-top: 2rem;
   margin-bottom: 0.5rem;
+  letter-spacing: -0.005em;
 }
-.legal-prose p { margin-bottom: 1rem; }
-.legal-prose ul { list-style: none; padding-left: 0; margin-bottom: 1rem; }
+.legal-prose p { margin-bottom: 1.05rem; }
+.legal-prose p:last-child { margin-bottom: 0; }
+.legal-prose ul { list-style: none; padding-left: 0; margin: 0.5rem 0 1.25rem; }
 .legal-prose ul li {
   position: relative;
-  padding-left: 1.25rem;
-  margin-bottom: 0.5rem;
+  padding-left: 1.6rem;
+  margin-bottom: 0.55rem;
 }
 .legal-prose ul li::before {
   content: "";
   position: absolute;
   left: 0;
-  top: 0.65em;
-  width: 6px;
-  height: 6px;
+  top: 0.62em;
+  width: 8px;
+  height: 8px;
   border-radius: 999px;
   background: rgb(var(--accent));
+  box-shadow: 0 0 0 3px rgb(var(--accent) / 0.12);
 }
-.legal-prose strong { color: rgb(var(--ink)); font-weight: 600; }
+.legal-prose ol {
+  list-style: none;
+  counter-reset: legal-ol;
+  padding-left: 0;
+  margin: 0.5rem 0 1.25rem;
+}
+.legal-prose ol li {
+  counter-increment: legal-ol;
+  position: relative;
+  padding-left: 2.4rem;
+  margin-bottom: 0.55rem;
+}
+.legal-prose ol li::before {
+  content: counter(legal-ol, decimal-leading-zero);
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-family: 'Cabinet Grotesk', sans-serif;
+  font-weight: 700;
+  font-size: 0.78rem;
+  letter-spacing: 0.16em;
+  color: rgb(var(--accent));
+  line-height: 1.78;
+}
+.legal-prose strong {
+  color: rgb(var(--text-primary));
+  font-weight: 600;
+  background: linear-gradient(180deg, transparent 65%, rgb(var(--accent) / 0.18) 65%);
+  padding: 0 0.08em;
+}
+.legal-prose em { color: rgb(var(--text-primary)); font-style: italic; }
 .legal-prose a {
-  color: rgb(var(--ink));
+  color: rgb(var(--text-primary));
   text-decoration: underline;
   text-decoration-color: rgb(var(--accent));
   text-underline-offset: 4px;
   text-decoration-thickness: 2px;
+  transition: color 0.25s ease;
 }
 .legal-prose a:hover { color: rgb(var(--accent)); }
+.legal-prose blockquote {
+  margin: 1.5rem 0;
+  padding: 0.5rem 0 0.5rem 1.25rem;
+  border-left: 2px solid rgb(var(--accent));
+  font-style: italic;
+  color: rgb(var(--text-primary) / 0.85);
+}
+
+/* Numbered legal section header */
+.legal-section {
+  padding-top: 3.25rem;
+  padding-bottom: 0.75rem;
+}
+.legal-section + .legal-section {
+  border-top: 1px solid rgb(var(--line) / 0.1);
+}
+.legal-section:first-child {
+  padding-top: 0;
+}
+.legal-section:target .legal-section-title {
+  color: rgb(var(--accent));
+}
+.legal-section[id] {
+  scroll-margin-top: 120px;
+}
+.legal-section-head {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+  margin-bottom: 1.6rem;
+  flex-wrap: wrap;
+}
+.legal-section-num {
+  font-family: 'Cabinet Grotesk', sans-serif;
+  font-weight: 700;
+  font-size: 0.78rem;
+  letter-spacing: 0.24em;
+  color: rgb(var(--accent));
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+.legal-section-title {
+  font-family: 'Cabinet Grotesk', sans-serif;
+  font-weight: 700;
+  font-size: clamp(1.6rem, 3vw, 2.35rem);
+  letter-spacing: -0.025em;
+  line-height: 1.05;
+  color: rgb(var(--text-primary));
+  transition: color 0.4s ease;
+}
+
+/* Massive monogram in hero — backdrop letter */
+.legal-monogram {
+  position: absolute;
+  right: -5vw;
+  top: -2vh;
+  font-size: clamp(20rem, 42vw, 52rem);
+  letter-spacing: -0.06em;
+  line-height: 1;
+  background-image: linear-gradient(
+    180deg,
+    rgb(var(--accent) / 0.16) 0%,
+    rgb(var(--accent) / 0.04) 55%,
+    transparent 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+@media (max-width: 1023px) {
+  .legal-monogram {
+    font-size: clamp(16rem, 70vw, 30rem);
+    right: -8vw;
+    top: 3vh;
+    opacity: 0.85;
+  }
+}
+
+/* TL;DR cards */
+.legal-tldr-card {
+  transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.3s ease, box-shadow 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.legal-tldr-card:hover {
+  transform: translateY(-4px);
+  border-color: rgb(var(--accent) / 0.4);
+  box-shadow: 0 24px 48px -28px rgb(var(--accent) / 0.4);
+}
+.legal-tldr-num {
+  position: absolute;
+  top: 1.2rem;
+  right: 1.4rem;
+  font-family: 'Cabinet Grotesk', sans-serif;
+  font-style: italic;
+  font-weight: 700;
+  font-size: 1.5rem;
+  color: rgb(var(--accent) / 0.55);
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+/* TOC link active-anchor highlight via :target */
+.legal-toc-link {
+  position: relative;
+}
+.legal-toc-link::before {
+  content: "";
+  position: absolute;
+  left: -0.85rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2px;
+  height: 0;
+  background: rgb(var(--accent));
+  transition: height 0.3s ease;
+  border-radius: 999px;
+}
+.legal-toc-link:hover::before {
+  height: 60%;
+}
+
+/* 404 receipt rows */
+.suggestion-row {
+  position: relative;
+  transition: padding-left 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.suggestion-row::before {
+  content: "";
+  position: absolute;
+  left: -0.4rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2px;
+  height: 0;
+  background: rgb(var(--accent));
+  border-radius: 999px;
+  transition: height 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.suggestion-row:hover {
+  padding-left: 0.6rem;
+}
+.suggestion-row:hover::before {
+  height: 60%;
+}
+
+/* Back-to-home pill in outro */
+.legal-back-stamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.6rem 1rem 1.25rem;
+  border-radius: 999px;
+  border: 1px solid rgb(255 255 255 / 0.18);
+  background: rgb(255 255 255 / 0.03);
+  transition: background 0.35s ease, border-color 0.35s ease,
+    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.legal-back-stamp:hover {
+  background: rgb(255 255 255 / 0.08);
+  border-color: rgb(var(--accent) / 0.55);
+  transform: translateY(-2px);
+}
+.legal-back-stamp-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: rgb(var(--accent));
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 600;
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.legal-back-stamp:hover .legal-back-stamp-arrow {
+  transform: translateX(-3px);
+}
 
 /* rotating stamp seal */
 @keyframes stamp-spin {

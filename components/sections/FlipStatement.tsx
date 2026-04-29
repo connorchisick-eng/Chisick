@@ -86,23 +86,24 @@ export function FlipStatement({ variant = "light", interval = 2200 }: Props) {
       >
         <h2
           className={clsx(
-            "font-grotesk font-bold leading-[1.25] text-center mx-auto max-w-[18ch]",
+            "font-grotesk font-bold leading-[1.18] text-center mx-auto",
+            "tracking-[-0.025em]",
             dark ? "text-cream" : "text-body",
           )}
-          style={{ fontSize: "clamp(2.5rem, 7.2vw, 7.2rem)" }}
+          style={{ fontSize: "clamp(2rem, 6vw, 6.25rem)" }}
         >
-          <div className="flip-line">
-            Don't pay for their{" "}
+          <div className="flip-line md:whitespace-nowrap">
+            Don&apos;t pay for their{" "}
             <span className="italic font-medium text-accent">
               <WordFlip words={LUXURY} index={idx} />
             </span>
           </div>
-          <div className="flip-line">
+          <div className="flip-line md:whitespace-nowrap">
             when you had{" "}
             <span
               className={clsx(
                 "italic font-medium",
-                dark ? "text-cream/70" : "text-body/80",
+                dark ? "text-cream/70" : "text-body/75",
               )}
             >
               <WordFlip words={HUMBLE} index={idx} />

@@ -106,95 +106,136 @@ export function Showcase() {
     >
       <div className="noise" />
 
-      {/* BLOCK 1 — no phone; text left, payment methods grid right */}
+      {/* ═══════════════ § 01 + § 02 — Payments + Fee ═══════════════
+          One unified editorial spread. Heading + 4-method list on the left,
+          the 1.5% fee + supporting bullets on the right. Both stories live
+          on the same canvas — half the height, all the info. */}
       <div
         data-reverse="false"
-        className="sc-block relative mx-auto max-w-[1440px] px-6 lg:px-10 pt-14 lg:pt-20 pb-10 lg:pb-14"
+        className="sc-block relative mx-auto max-w-[1440px] px-6 lg:px-10 pt-16 lg:pt-24 pb-14 lg:pb-20"
       >
-        <div className="relative grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 items-start">
-          <div className="lg:col-span-5 relative z-10">
-            <div className="sc-eyebrow eyebrow text-cream/50">Payments</div>
-            <h3 className="sc-heading mt-5 font-grotesk font-bold text-cream text-title">
-              Pay <span className="italic text-accent">your</span> way
+        <ChapterMark num="01" label="Payments & the fee" tone="dark" />
+
+        <div className="relative mt-8 lg:mt-12 grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 items-start">
+          {/* Methods — left */}
+          <div className="lg:col-span-7 relative z-10">
+            <h3
+              className="sc-heading font-grotesk font-bold text-cream leading-[0.94] tracking-[-0.03em]"
+              style={{ fontSize: "clamp(2.5rem, 4.8vw, 4.5rem)" }}
+            >
+              Pay <span className="italic text-accent">your</span> way.
             </h3>
-            <p className="sc-body mt-6 text-lg text-cream/65 max-w-md leading-[1.6]">
-              Apple Pay, credit card, debit, bank transfer. Use whatever works
-              for you — and crypto is next.
+            <p className="sc-body mt-4 text-[0.98rem] lg:text-[1.05rem] text-cream/60 max-w-[36ch] leading-[1.55]">
+              Apple Pay, credit, debit, bank transfer. Crypto is next.
             </p>
 
-            <div className="sc-body mt-10 pt-8 border-t border-cream/10 max-w-md">
-              <div className="flex items-baseline gap-4">
-                <span
-                  className="font-grotesk font-bold text-accent tracking-[-0.04em] leading-none"
-                  style={{ fontSize: "clamp(3.5rem, 7vw, 5.5rem)" }}
-                >
-                  1.5%
-                </span>
-                <div className="flex flex-col">
-                  <span className="font-grotesk font-bold text-cream text-[1.15rem] leading-tight">
-                    fee per settlement
-                  </span>
-                  <span className="text-[0.72rem] uppercase tracking-[0.22em] text-cream/55 font-semibold mt-1">
-                    No per-person fees. No hidden charges.
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="lg:col-span-7 relative z-10 lg:mt-[88px]">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <ul className="mt-7 lg:mt-9 border-y border-cream/15 divide-y divide-cream/10">
               {[
-                { label: "Tap to pay", icon: "tap-to-pay" },
-                { label: "Debit / Credit card", icon: "creditcard" },
-                { label: "Bank transfer", icon: "bank" },
-                { label: "Crypto", icon: "bitcoin", soon: true },
-              ].map((c) => (
-                <div
+                { label: "Tap to pay", tag: "Instant", icon: "tap-to-pay" },
+                { label: "Debit / Credit card", tag: "+3% fee", icon: "creditcard" },
+                { label: "Bank transfer", tag: "Free", icon: "bank" },
+                { label: "Crypto", tag: "Soon", icon: "bitcoin", soon: true },
+              ].map((c, i) => (
+                <li
                   key={c.label}
-                  className={clsx(
-                    "sc-card flex flex-col sm:flex-row items-center sm:items-center gap-4 sm:gap-5 p-6 rounded-2xl bg-white/5 border border-white/10 transition-all hover:bg-white/10 hover:-translate-y-0.5 text-center sm:text-left",
-                    c.soon ? "hover:border-accent/40" : "hover:border-accent/30",
-                  )}
+                  className="sc-card relative flex items-center gap-4 sm:gap-5 py-3.5 sm:py-4"
                 >
-                  <span className="w-14 h-14 rounded-xl grid place-items-center shrink-0 bg-white text-ink shadow-[0_4px_12px_rgba(0,0,0,0.2)]">
+                  <span
+                    className="font-grotesk font-bold text-cream/30 tabular-nums tracking-[-0.04em] leading-none w-9 sm:w-12 shrink-0"
+                    style={{ fontSize: "clamp(1.15rem, 1.7vw, 1.5rem)" }}
+                  >
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  <span className="w-9 h-9 rounded-full grid place-items-center shrink-0 bg-cream text-ink shadow-[0_4px_14px_rgba(0,0,0,0.25)]">
                     <img
                       src={`/icons/${c.icon}.svg`}
                       alt=""
                       aria-hidden
-                      width={28}
-                      height={28}
+                      width={20}
+                      height={20}
                       className="pointer-events-none"
                     />
                   </span>
-                  <span className="text-base lg:text-lg text-cream/90 sm:flex-1 font-medium">
+                  <span className="flex-1 min-w-0 font-grotesk font-bold text-cream tracking-[-0.015em] text-[1rem] sm:text-[1.1rem] leading-tight">
                     {c.label}
                   </span>
-                  {c.soon && (
-                    <span className="text-[0.62rem] uppercase tracking-[0.18em] text-accent/80 font-semibold border border-accent/30 rounded-full px-2 py-1">
-                      Coming later
-                    </span>
-                  )}
-                </div>
+                  <span
+                    className={clsx(
+                      "text-[0.62rem] uppercase tracking-[0.22em] font-semibold whitespace-nowrap shrink-0 tabular-nums",
+                      c.soon ? "text-accent" : "text-cream/45",
+                    )}
+                  >
+                    {c.tag}
+                  </span>
+                </li>
               ))}
-            </div>
+            </ul>
           </div>
+
+          {/* Fee — right */}
+          <aside className="lg:col-span-5 relative z-10 lg:pl-8 lg:border-l lg:border-cream/10">
+            <div className="sc-body flex items-center gap-3 text-[0.66rem] uppercase tracking-[0.28em] font-semibold text-accent">
+              <span aria-hidden className="w-1.5 h-1.5 rounded-full bg-accent" />
+              Settlement fee
+            </div>
+
+            <div className="sc-heading mt-3 flex items-baseline gap-2 lg:gap-3">
+              <span
+                className="font-grotesk font-bold text-cream tabular-nums tracking-[-0.05em] leading-[0.85]"
+                style={{ fontSize: "clamp(4.5rem, 11vw, 9rem)" }}
+              >
+                1<span className="text-accent">.</span>5
+              </span>
+              <span
+                className="font-grotesk font-bold text-accent leading-[0.9] tracking-[-0.04em]"
+                style={{ fontSize: "clamp(2.25rem, 5.5vw, 4.5rem)" }}
+              >
+                %
+              </span>
+            </div>
+            <p className="sc-body mt-1 font-grotesk italic font-medium text-cream/70 text-[0.95rem] lg:text-[1.05rem] leading-[1.4]">
+              one tab, one fee. paid by whoever started it.
+            </p>
+
+            <ul className="sc-body mt-6 lg:mt-7 grid grid-cols-1 gap-2 text-[0.78rem] lg:text-[0.82rem] text-cream/70 leading-tight">
+              {[
+                "No per-person fees",
+                "No hidden charges",
+                "Host pays the fee, not the table",
+                "Settles overnight",
+              ].map((b, i) => (
+                <li key={b} className="flex items-center gap-3">
+                  <span className="font-grotesk font-bold text-accent tabular-nums leading-none w-5 shrink-0 text-[0.78rem]">
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  <span aria-hidden className="w-3 h-px bg-cream/30 shrink-0" />
+                  <span>{b}</span>
+                </li>
+              ))}
+            </ul>
+          </aside>
         </div>
       </div>
 
-      {/* BLOCK 2 — FULL-BLEED BOLD COLOR, NO SCREEN */}
-      <div data-reverse="true" className="sc-block relative w-full pt-0 lg:pt-4 pb-24 lg:pb-32">
+      {/* ═══════════════ § 02 — THE HANDOFF ═══════════════
+          Cream slab. Hero claim + tight 3-step flow. All copy compressed
+          to fragments — heading carries the punch, nodes are noun phrases. */}
+      <div data-reverse="true" className="sc-block relative w-full pt-2 lg:pt-6 pb-20 lg:pb-28">
+        <div className="mx-auto max-w-[1440px] px-6 lg:px-10 pb-5 lg:pb-8">
+          <ChapterMark num="02" label="The handoff" tone="dark" />
+        </div>
+
         <div className="sc-image relative w-full">
           <div
-            className="sc-full-image relative mx-auto w-[87vw] max-w-[1300px] min-h-[500px] md:min-h-[540px] rounded-[1.4rem] overflow-hidden bg-cream"
+            className="sc-full-image relative mx-auto w-[88vw] max-w-[1280px] rounded-[1.4rem] overflow-hidden bg-cream"
             style={{
               backgroundImage:
-                "radial-gradient(circle at 85% 120%, rgba(255,124,97,0.28), transparent 55%), radial-gradient(circle at 10% -20%, rgba(255,124,97,0.22), transparent 55%)",
+                "radial-gradient(circle at 85% 110%, rgba(255,124,97,0.28), transparent 55%), radial-gradient(circle at 10% -20%, rgba(255,124,97,0.22), transparent 55%)",
             }}
           >
-            {/* decorative grid lines */}
             <div
               aria-hidden
-              className="absolute inset-0 opacity-[0.08]"
+              className="absolute inset-0 opacity-[0.06]"
               style={{
                 backgroundImage:
                   "linear-gradient(90deg, rgba(14,14,14,0.8) 1px, transparent 1px)",
@@ -202,55 +243,103 @@ export function Showcase() {
               }}
             />
 
-            {/* "settled." wordmark — scaled down on mobile, anchored
-                bottom-right on desktop. */}
+            {/* "settled." stamp — rotated, anchored bottom-right */}
             <div
               aria-hidden
-              className="pointer-events-none absolute right-[4%] bottom-[2%] md:right-[2%] md:bottom-[4%] font-grotesk italic font-bold text-ink/10 leading-none select-none"
-              style={{ fontSize: "clamp(3rem, 14vw, 16rem)", letterSpacing: "0.01em" }}
+              className="pointer-events-none absolute right-[3%] bottom-[3%] md:right-[2.5%] md:bottom-[5%] font-grotesk italic font-bold text-ink/[0.08] leading-none select-none whitespace-nowrap"
+              style={{
+                fontSize: "clamp(2.5rem, 9.5vw, 11rem)",
+                letterSpacing: "0.01em",
+                transform: "rotate(-4deg)",
+                transformOrigin: "100% 100%",
+              }}
             >
               settled.
             </div>
 
-            <div className="relative h-full min-h-[inherit] flex items-start justify-center md:justify-start pt-10 md:pt-14 lg:pt-20 pb-10 md:pb-16">
-              <div className="w-full px-8 md:pl-[5.5vw] md:pr-[5vw] lg:pl-[6vw] lg:pr-[5vw] md:max-w-[920px] relative z-10 text-center md:text-left flex flex-col items-center md:items-start">
-                <h3 className="sc-heading font-grotesk font-bold text-ink text-title md:text-display leading-[1.02] md:leading-[0.92]">
+            <div className="relative px-8 md:px-[5.5vw] lg:px-[6vw] py-12 md:py-14 lg:py-16 grid grid-cols-1 md:grid-cols-12 gap-10 md:gap-14 items-start">
+              {/* Left — claim */}
+              <div className="md:col-span-7 flex flex-col items-center md:items-start text-center md:text-left">
+                <div className="flex items-center gap-3 text-[0.66rem] uppercase tracking-[0.28em] font-semibold text-ink/55">
+                  <span aria-hidden className="inline-block w-7 h-px bg-ink/40" />
+                  The flow
+                </div>
+                <h3
+                  className="sc-heading mt-4 font-grotesk font-bold text-ink leading-[0.94] tracking-[-0.03em] max-w-[14ch]"
+                  style={{ fontSize: "clamp(2.5rem, 6.4vw, 5.75rem)" }}
+                >
                   No one fronts <span className="italic">the bill.</span>
                 </h3>
-                <p className="sc-body mt-5 md:mt-6 text-base md:text-lg text-ink/75 max-w-xl mx-auto md:mx-0 leading-[1.6]">
-                  Everyone pays their share up front. Funds are held safely
-                  until the tab is complete, then a one-time virtual card
-                  appears on the host&apos;s phone — one tap at the POS and the
-                  restaurant is paid in a single transaction.
+                <p className="sc-body mt-5 text-[0.98rem] md:text-[1.05rem] text-ink/70 max-w-md leading-[1.55]">
+                  Everyone pays first. Funds wait in escrow. A one-time
+                  virtual card lands on the host&apos;s phone — one tap at
+                  the POS pays the restaurant in full.
                 </p>
+              </div>
 
-                <div className="sc-body mt-10 md:mt-12 grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-5 md:gap-8 lg:gap-12 w-full max-w-3xl">
-                  {[
-                    { h: "Safe hold", c: "Funds held until settled" },
-                    { h: "Virtual card", c: "One clean transaction" },
-                    { h: "1 tap", c: "Host pays the restaurant" },
-                  ].map((m) => (
-                    <div
-                      key={m.h}
-                      className="flex flex-col items-center sm:items-start text-center sm:text-left"
-                    >
-                      <div className="font-grotesk font-bold text-ink leading-[1.02] tracking-[-0.02em] text-[1.8rem] sm:text-[1.5rem] md:text-[2rem] lg:text-[2.4rem] whitespace-nowrap">
+              {/* Right — 3-step flow, vertical, tight */}
+              <ol className="sc-body md:col-span-5 md:pl-6 md:border-l md:border-ink/15 flex flex-col">
+                {[
+                  { n: "01", h: "Everyone pays", c: "Funds enter escrow" },
+                  { n: "02", h: "Card mints", c: "One-time virtual card" },
+                  { n: "03", h: "Host taps", c: "Restaurant paid in full" },
+                ].map((m, i, arr) => (
+                  <li
+                    key={m.n}
+                    className={clsx(
+                      "py-4 flex items-baseline gap-4",
+                      i < arr.length - 1 && "border-b border-ink/12",
+                    )}
+                  >
+                    <span className="font-grotesk font-bold text-accent tabular-nums leading-none text-[1rem] w-7 shrink-0">
+                      {m.n}
+                    </span>
+                    <div className="flex-1">
+                      <div
+                        className="font-grotesk font-bold text-ink leading-[1.05] tracking-[-0.02em]"
+                        style={{ fontSize: "clamp(1.2rem, 1.9vw, 1.6rem)" }}
+                      >
                         {m.h}
                       </div>
-                      <div className="mt-auto pt-3 text-[0.68rem] md:text-[0.72rem] uppercase tracking-[0.2em] text-ink/55 font-semibold leading-[1.45] min-h-[2.6em]">
+                      <div className="mt-1 text-[0.78rem] uppercase tracking-[0.18em] text-ink/55 font-semibold leading-tight">
                         {m.c}
                       </div>
                     </div>
-                  ))}
-                </div>
-              </div>
+                  </li>
+                ))}
+              </ol>
             </div>
-
           </div>
         </div>
       </div>
 
     </section>
+  );
+}
+
+/**
+ * Editorial chapter mark — a numbered, hairline-ruled section label that
+ * starts each block in the showcase. Acts like a magazine chapter heading.
+ */
+function ChapterMark({
+  num,
+  label,
+  tone = "dark",
+}: {
+  num: string;
+  label: string;
+  tone?: "dark" | "light";
+}) {
+  const text = tone === "dark" ? "text-cream/55" : "text-ink/55";
+  const rule = tone === "dark" ? "bg-cream/25" : "bg-ink/25";
+  return (
+    <div className="flex items-center gap-4 text-[0.7rem] uppercase tracking-[0.3em] font-semibold">
+      <span className={clsx("font-grotesk font-bold tabular-nums", text)}>
+        § {num}
+      </span>
+      <span aria-hidden className={clsx("h-px w-12 lg:w-16", rule)} />
+      <span className={text}>{label}</span>
+    </div>
   );
 }
 
