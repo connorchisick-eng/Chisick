@@ -1,7 +1,13 @@
 import { streamText, type ModelMessage } from "ai";
 import { AGENT_SYSTEM_PROMPT } from "@/lib/agent-prompt";
+import {
+  bodyTooLarge,
+  isJsonRequest,
+  rateLimit,
+  sameOrigin,
+} from "@/lib/server-security";
 
-export const runtime = "edge";
+export const runtime = "nodejs";
 
 const MODEL_ID = "openai/gpt-oss-120b";
 const MAX_MESSAGES = 20;
@@ -11,9 +17,39 @@ const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX = 10;
 
 type InMessage = { role: "user" | "assistant"; content: string };
-type RateBucket = { count: number; resetAt: number };
+const rateBuckets = new Map<string, { count: number; resetAt: number }>();
 
-const rateBuckets = new Map<string, RateBucket>();
+function cleanTelemetryValue(value: unknown) {
+  return typeof value === "string" && value.length > 0
+    ? value.slice(0, 200)
+    : undefined;
+}
+
+function configuredForPostHog() {
+  return Boolean(
+    process.env.POSTHOG_TOKEN ||
+      process.env.POSTHOG_PROJECT_TOKEN ||
+      process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN ||
+      process.env.NEXT_PUBLIC_POSTHOG_TOKEN ||
+      process.env.NEXT_PUBLIC_POSTHOG_KEY,
+  );
+}
+
+function telemetryMetadata(payload: {
+  posthogDistinctId?: unknown;
+  posthogSessionId?: unknown;
+} | null) {
+  const metadata: Record<string, string> = {
+    posthog_trace_id: crypto.randomUUID(),
+    route: "/api/chat",
+    feature: "help_agent",
+  };
+  const distinctId = cleanTelemetryValue(payload?.posthogDistinctId);
+  const sessionId = cleanTelemetryValue(payload?.posthogSessionId);
+  if (distinctId) metadata.posthog_distinct_id = distinctId;
+  if (sessionId) metadata.posthog_session_id = sessionId;
+  return metadata;
+}
 
 function jsonError(message: string, status: number, headers?: HeadersInit) {
   return new Response(JSON.stringify({ error: message }), {
@@ -26,54 +62,6 @@ function jsonError(message: string, status: number, headers?: HeadersInit) {
   });
 }
 
-function clientIp(req: Request) {
-  return (
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    req.headers.get("x-real-ip") ||
-    req.headers.get("cf-connecting-ip") ||
-    "unknown"
-  );
-}
-
-function sameOrigin(req: Request) {
-  const origin = req.headers.get("origin");
-  if (!origin) return true;
-
-  try {
-    const originUrl = new URL(origin);
-    const requestUrl = new URL(req.url);
-    return originUrl.host === req.headers.get("host") || originUrl.host === requestUrl.host;
-  } catch {
-    return false;
-  }
-}
-
-function rateLimit(req: Request) {
-  const now = Date.now();
-  const key = clientIp(req);
-  const existing = rateBuckets.get(key);
-  const bucket =
-    existing && existing.resetAt > now
-      ? existing
-      : { count: 0, resetAt: now + RATE_LIMIT_WINDOW_MS };
-
-  bucket.count += 1;
-  rateBuckets.set(key, bucket);
-
-  if (rateBuckets.size > 10_000) {
-    for (const [bucketKey, value] of rateBuckets) {
-      if (value.resetAt <= now) rateBuckets.delete(bucketKey);
-    }
-  }
-
-  if (bucket.count > RATE_LIMIT_MAX) {
-    const retryAfter = Math.ceil((bucket.resetAt - now) / 1000).toString();
-    return jsonError("Too many requests.", 429, { "retry-after": retryAfter });
-  }
-
-  return null;
-}
-
 export async function POST(req: Request) {
   if (!process.env.AI_GATEWAY_API_KEY && !process.env.VERCEL_OIDC_TOKEN) {
     return jsonError("Agent is not configured.", 500);
@@ -83,16 +71,22 @@ export async function POST(req: Request) {
     return jsonError("Invalid origin.", 403);
   }
 
-  if (!req.headers.get("content-type")?.includes("application/json")) {
+  if (!isJsonRequest(req)) {
     return jsonError("Content-Type must be application/json.", 415);
   }
 
-  const contentLength = Number(req.headers.get("content-length") || 0);
-  if (contentLength > MAX_REQUEST_BYTES) {
+  if (bodyTooLarge(req, MAX_REQUEST_BYTES)) {
     return jsonError("Request body is too large.", 413);
   }
 
-  const limited = rateLimit(req);
+  const limited = rateLimit({
+    buckets: rateBuckets,
+    windowMs: RATE_LIMIT_WINDOW_MS,
+    max: RATE_LIMIT_MAX,
+    request: req,
+    onLimited: (retryAfter) =>
+      jsonError("Too many requests.", 429, { "retry-after": retryAfter }),
+  });
   if (limited) return limited;
 
   let body: unknown;
@@ -102,7 +96,12 @@ export async function POST(req: Request) {
     return jsonError("Invalid JSON.", 400);
   }
 
-  const raw = (body as { messages?: unknown } | null)?.messages;
+  const payload = body as {
+    messages?: unknown;
+    posthogDistinctId?: unknown;
+    posthogSessionId?: unknown;
+  } | null;
+  const raw = payload?.messages;
   if (!Array.isArray(raw)) {
     return jsonError("Invalid messages.", 400);
   }
@@ -137,6 +136,11 @@ export async function POST(req: Request) {
       messages: modelMessages,
       maxOutputTokens: 1024,
       temperature: 0.4,
+      experimental_telemetry: {
+        isEnabled: configuredForPostHog(),
+        functionId: "help-agent-chat",
+        metadata: telemetryMetadata(payload),
+      },
     });
 
     return result.toTextStreamResponse({

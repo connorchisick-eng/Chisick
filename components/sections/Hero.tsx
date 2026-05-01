@@ -7,15 +7,19 @@ import { ClawReveal } from "@/components/ClawReveal";
 import { Phone } from "@/components/Phone";
 import { Arrow } from "@/components/icons";
 import { Magnetic } from "@/components/Magnetic";
-import { PHONE_VARIANTS, PREMIUM_VARIANTS } from "@/lib/images";
+import { PHONE_VARIANTS, PREMIUM_VARIANTS, screenImageSrc } from "@/lib/images";
 import type { ScreenVariant } from "@/components/Screen";
 import { Screen } from "@/components/Screen";
+import { track, useSectionViewed } from "@/lib/analytics";
 
 const CODED_VARIANTS = new Set<ScreenVariant>();
 
 const START_PHONE = 8;
+const prefersReducedMotion = () =>
+  window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 export function Hero() {
+  const sectionRef = useSectionViewed<HTMLElement>("hero");
   const subRef = useRef<HTMLParagraphElement>(null);
   const ctaRef = useRef<HTMLDivElement>(null);
 
@@ -24,16 +28,29 @@ export function Hero() {
   const phonesRef = useRef<(HTMLDivElement | null)[]>([]);
   const [activeIdx, setActiveIdx] = useState(START_PHONE);
   const [offset, setOffset] = useState(0);
+  const [hasCenteredTrack, setHasCenteredTrack] = useState(false);
   const [lightbox, setLightbox] = useState<ScreenVariant | null>(null);
 
   // Hero entrance fade-ins — wait for the claw swipes to finish drawing so
   // the CTA doesn't clash with the headline animation.
   useEffect(() => {
+    if (prefersReducedMotion()) {
+      [subRef.current, ctaRef.current].forEach((el) => {
+        if (!el) return;
+        el.style.opacity = "1";
+        el.style.transform = "translateY(0)";
+      });
+      return;
+    }
+
     const tl = gsap.timeline({ defaults: { ease: "expo.out" } });
     if (subRef.current)
-      tl.fromTo(subRef.current, { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.9 }, 1.3);
+      tl.fromTo(subRef.current, { y: 14, opacity: 0 }, { y: 0, opacity: 1, duration: 0.52 }, 0.42);
     if (ctaRef.current)
-      tl.fromTo(ctaRef.current, { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.9 }, 1.6);
+      tl.fromTo(ctaRef.current, { y: 14, opacity: 0 }, { y: 0, opacity: 1, duration: 0.52 }, 0.54);
+    return () => {
+      tl.kill();
+    };
   }, []);
 
   // Compute the translateX needed to center phone `idx` inside the viewport
@@ -49,6 +66,7 @@ export function Hero() {
   // Re-center when activeIdx changes or on resize
   useLayoutEffect(() => {
     setOffset(computeOffset(activeIdx));
+    setHasCenteredTrack(true);
   }, [activeIdx]);
 
   useEffect(() => {
@@ -114,6 +132,10 @@ export function Hero() {
       const idx = Number(phoneEl.dataset.phoneIdx);
       if (Number.isNaN(idx)) return;
       if (idx === activeIdx) {
+        track("hero_phone_lightbox_opened", {
+          screen_variant: PHONE_VARIANTS[idx],
+          screen_index: idx,
+        });
         setLightbox(PHONE_VARIANTS[idx]);
       } else {
         goTo(idx);
@@ -160,7 +182,12 @@ export function Hero() {
   }, []);
 
   const goTo = (i: number) => {
-    setActiveIdx(Math.max(0, Math.min(PHONE_VARIANTS.length - 1, i)));
+    const nextIdx = Math.max(0, Math.min(PHONE_VARIANTS.length - 1, i));
+    setActiveIdx(nextIdx);
+    track("hero_phone_changed", {
+      screen_variant: PHONE_VARIANTS[nextIdx],
+      screen_index: nextIdx,
+    });
   };
   const prev = () => goTo(activeIdx - 1);
   const next = () => goTo(activeIdx + 1);
@@ -181,22 +208,37 @@ export function Hero() {
   }, [lightbox]);
 
   return (
-    <section className="relative bg-surface pt-24 lg:pt-28 pb-16 lg:pb-24 overflow-hidden">
+    <section ref={sectionRef} className="relative bg-surface pt-24 lg:pt-28 pb-16 lg:pb-24 overflow-hidden">
       <div className="mx-auto max-w-[1440px] px-6 lg:px-10 relative">
         <h1 className="mt-2 lg:mt-4">
           <ClawReveal />
         </h1>
 
         <div className="mt-8 lg:mt-10 flex flex-col items-center text-center gap-7">
-          <p ref={subRef} className="text-lg md:text-xl text-body/70 max-w-md leading-[1.5]">
+          <p
+            ref={subRef}
+            className="text-lg md:text-xl text-body/70 max-w-md leading-[1.5]"
+            style={{ opacity: 0, transform: "translateY(14px)" }}
+          >
             Split the check and pay it in one app. No chasing payments after
             the meal.
           </p>
 
-          <div ref={ctaRef} className="flex items-stretch sm:items-center w-full sm:w-auto max-w-[340px] sm:max-w-none">
+          <div
+            ref={ctaRef}
+            className="flex items-stretch sm:items-center w-full sm:w-auto max-w-[340px] sm:max-w-none"
+            style={{ opacity: 0, transform: "translateY(14px)" }}
+          >
             <Magnetic strength={0.3} className="w-full sm:w-auto">
               <Link
                 href="/waitlist"
+                onClick={() =>
+                  track("cta_clicked", {
+                    cta_name: "join_waitlist",
+                    location: "hero",
+                    target_path: "/waitlist",
+                  })
+                }
                 className="btn-primary justify-center whitespace-nowrap w-full sm:w-[18rem] !text-[1.05rem] !py-[1.2rem] !px-[2.1rem]"
               >
                 Join the Waitlist
@@ -243,7 +285,10 @@ export function Hero() {
             className="flex items-start gap-5 lg:gap-6 py-6 md:py-8"
             style={{
               transform: `translate3d(${offset}px, 0, 0)`,
-              transition: "transform 0.7s cubic-bezier(0.22, 1, 0.36, 1)",
+              opacity: hasCenteredTrack ? 1 : 0,
+              transition: hasCenteredTrack
+                ? "transform 0.55s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease-out"
+                : "none",
               willChange: "transform",
             }}
           >
@@ -324,7 +369,13 @@ export function Hero() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-            onClick={() => setLightbox(null)}
+            onClick={() => {
+              track("hero_phone_lightbox_closed", {
+                screen_variant: lightbox,
+                method: "backdrop",
+              });
+              setLightbox(null);
+            }}
             style={{
               backgroundColor: "rgba(14,14,14,0.82)",
               backdropFilter: "blur(10px)",
@@ -351,7 +402,7 @@ export function Hero() {
                 </div>
               ) : (
                 <img
-                  src={`/screens/${lightbox}.png`}
+                  src={screenImageSrc(lightbox)}
                   alt={`Tabby ${lightbox} screen`}
                   draggable={false}
                   className="block max-h-[86vh] max-w-[86vw] w-auto h-auto rounded-[2rem] shadow-[0_60px_120px_-40px_rgba(14,14,14,0.75)] select-none"
@@ -359,7 +410,13 @@ export function Hero() {
               )}
               <button
                 type="button"
-                onClick={() => setLightbox(null)}
+                onClick={() => {
+                  track("hero_phone_lightbox_closed", {
+                    screen_variant: lightbox,
+                    method: "button",
+                  });
+                  setLightbox(null);
+                }}
                 aria-label="Close"
                 className="absolute -top-3 -right-3 w-10 h-10 rounded-full bg-white text-ink flex items-center justify-center shadow-[0_10px_24px_-8px_rgba(14,14,14,0.5)] hover:scale-110 transition-transform"
               >

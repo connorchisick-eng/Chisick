@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { Arrow } from "@/components/icons";
+import { track } from "@/lib/analytics";
 
 type Props = {
   /** Hide the cluster on certain scenes (e.g. `replay` already has prominent CTAs). */
@@ -20,7 +21,7 @@ export function FloatingCtas({ visible, onSkipToRecap }: Props) {
   if (!visible) return null;
   return (
     <div
-      className="fixed z-50 flex items-center gap-2.5 sm:gap-3 pointer-events-none"
+      className="fixed z-50 hidden sm:flex items-center gap-2.5 sm:gap-3 pointer-events-none"
       style={{
         right: "max(env(safe-area-inset-right), 1.25rem)",
         bottom: "max(env(safe-area-inset-bottom), 1.25rem)",
@@ -36,6 +37,13 @@ export function FloatingCtas({ visible, onSkipToRecap }: Props) {
       </button>
       <Link
         href="/waitlist"
+        onClick={() =>
+          track("cta_clicked", {
+            cta_name: "join_waitlist",
+            location: "demo_floating",
+            target_path: "/waitlist",
+          })
+        }
         className="pointer-events-auto btn-primary !text-[0.82rem] !py-[0.7rem] !px-[1.15rem] shadow-[0_18px_40px_-12px_rgba(255,124,97,0.55)]"
       >
         Join the waitlist

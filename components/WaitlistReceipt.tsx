@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { gsap } from "gsap";
 import { AnimatePresence, motion } from "motion/react";
 import { Arrow } from "./icons";
+import { track, waitlistSource } from "@/lib/analytics";
 
 /**
  * The waitlist receipt IS the signup form. The upper half is the stylized
@@ -38,6 +39,8 @@ export function WaitlistReceipt() {
     "idle" | "loading" | "done" | "error"
   >("idle");
   const [signing, setSigning] = useState(false);
+  const startedFields = useRef(new Set<string>());
+  const confirmationTracked = useRef(false);
 
   const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
   const phoneDigits = phone.replace(/\D/g, "").length;
@@ -49,6 +52,13 @@ export function WaitlistReceipt() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!valid || status === "loading") return;
+    track("waitlist_submit_clicked", {
+      has_name: Boolean(name.trim()),
+      has_phone: phoneComplete,
+      email_valid: emailValid,
+      phone_complete: phoneComplete,
+      source_cta: waitlistSource(),
+    });
     setStatus("loading");
     const phoneToSend = phoneComplete ? phone : "";
     try {
@@ -57,7 +67,24 @@ export function WaitlistReceipt() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, email, phone: phoneToSend }),
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) {
+        let errorCode = "unknown";
+        try {
+          const body = (await res.json()) as { error?: string };
+          errorCode = body.error || errorCode;
+        } catch {}
+        track("waitlist_submit_failed", {
+          error_code: errorCode,
+          http_status: res.status,
+          source_cta: waitlistSource(),
+        });
+        throw new Error(`HTTP ${res.status}`);
+      }
+      track("waitlist_submitted", {
+        has_name: Boolean(name.trim()),
+        has_phone: phoneComplete,
+        source_cta: waitlistSource(),
+      });
       // Let the signature fully draw, then crossfade form → confirmation
       // while the ink dissolves in the same beat — no visible gap.
       setSigning(true);
@@ -73,6 +100,7 @@ export function WaitlistReceipt() {
 
   // Entrance: paper drops in and settles at -3.2deg.
   useEffect(() => {
+    track("waitlist_viewed", { source_cta: waitlistSource() });
     const ctx = gsap.context(() => {
       if (paperRef.current) {
         gsap.fromTo(
@@ -92,6 +120,25 @@ export function WaitlistReceipt() {
     }, rootRef);
     return () => ctx.revert();
   }, []);
+
+  useEffect(() => {
+    if (status !== "done" || confirmationTracked.current) return;
+    confirmationTracked.current = true;
+    track("waitlist_confirmation_viewed", {
+      has_name: Boolean(name.trim()),
+      has_phone: phoneComplete,
+      source_cta: waitlistSource(),
+    });
+  }, [name, phoneComplete, status]);
+
+  const trackFieldStarted = (field: string) => {
+    if (startedFields.current.has(field)) return;
+    startedFields.current.add(field);
+    track("waitlist_field_started", {
+      field_name: field,
+      source_cta: waitlistSource(),
+    });
+  };
 
   return (
     <div
@@ -192,7 +239,7 @@ export function WaitlistReceipt() {
           <span
             className="block absolute left-0 top-0 w-full animate-cat-peek"
             style={{
-              backgroundImage: "url('/cat-mascot.png')",
+              backgroundImage: "url('/cat-mascot.webp')",
               backgroundSize: "100% auto",
               backgroundRepeat: "no-repeat",
               backgroundPosition: "center top",
@@ -204,7 +251,7 @@ export function WaitlistReceipt() {
         {/* Receipt paper — zigzag top + bottom edges via clip-path */}
         <form
           onSubmit={submit}
-          className="relative bg-[#F3EBDA] text-[#2a2a2a] font-mono px-7 pt-7 pb-9 shadow-[0_40px_60px_-20px_rgba(14,14,14,0.35),0_12px_24px_-12px_rgba(14,14,14,0.18)] text-left"
+          className="ph-no-capture relative bg-[#F3EBDA] text-[#2a2a2a] font-mono px-7 pt-7 pb-9 shadow-[0_40px_60px_-20px_rgba(14,14,14,0.35),0_12px_24px_-12px_rgba(14,14,14,0.18)] text-left"
           style={{
             clipPath:
               "polygon(0% 10px, 4% 0%, 8% 10px, 12% 0%, 16% 10px, 20% 0%, 24% 10px, 28% 0%, 32% 10px, 36% 0%, 40% 10px, 44% 0%, 48% 10px, 52% 0%, 56% 10px, 60% 0%, 64% 10px, 68% 0%, 72% 10px, 76% 0%, 80% 10px, 84% 0%, 88% 10px, 92% 0%, 96% 10px, 100% 0%, 100% calc(100% - 10px), 96% 100%, 92% calc(100% - 10px), 88% 100%, 84% calc(100% - 10px), 80% 100%, 76% calc(100% - 10px), 72% 100%, 68% calc(100% - 10px), 64% 100%, 60% calc(100% - 10px), 56% 100%, 52% calc(100% - 10px), 48% 100%, 44% calc(100% - 10px), 40% 100%, 36% calc(100% - 10px), 32% 100%, 28% calc(100% - 10px), 24% 100%, 20% calc(100% - 10px), 16% 100%, 12% calc(100% - 10px), 8% 100%, 4% calc(100% - 10px), 0% 100%)",
@@ -365,6 +412,7 @@ export function WaitlistReceipt() {
                     label="Name"
                     value={name}
                     onChange={setName}
+                    onFocus={() => trackFieldStarted("name")}
                     placeholder="your name"
                     autoComplete="name"
                     type="text"
@@ -373,6 +421,7 @@ export function WaitlistReceipt() {
                     label="Email"
                     value={email}
                     onChange={setEmail}
+                    onFocus={() => trackFieldStarted("email")}
                     placeholder="you@example.com"
                     autoComplete="email"
                     type="email"
@@ -382,6 +431,7 @@ export function WaitlistReceipt() {
                     label="Phone"
                     value={phone}
                     onChange={(v) => setPhone(formatPhone(v))}
+                    onFocus={() => trackFieldStarted("phone")}
                     placeholder="(555) 123-4567 · optional"
                     autoComplete="tel"
                     type="tel"
@@ -522,6 +572,7 @@ function Field({
   label,
   value,
   onChange,
+  onFocus,
   placeholder,
   type,
   autoComplete,
@@ -530,6 +581,7 @@ function Field({
   label: string;
   value: string;
   onChange: (v: string) => void;
+  onFocus?: () => void;
   placeholder: string;
   type: "text" | "tel" | "email";
   autoComplete?: string;
@@ -551,8 +603,9 @@ function Field({
             required={required}
             value={value}
             onChange={(e) => onChange(e.target.value)}
+            onFocus={onFocus}
             placeholder={placeholder}
-            className="peer w-full bg-transparent font-mono text-[0.82rem] tracking-[0.02em] text-[#1a1a1a] placeholder:text-[#2a2a2a]/30 focus:outline-none pb-1 caret-[rgb(255,124,97)]"
+            className="ph-no-capture peer w-full bg-transparent font-mono text-[0.82rem] tracking-[0.02em] text-[#1a1a1a] placeholder:text-[#2a2a2a]/30 focus:outline-none pb-1 caret-[rgb(255,124,97)]"
           />
           <span className="pointer-events-none absolute left-0 right-0 bottom-0 border-b border-dashed border-[#2a2a2a]/45 peer-focus:border-[rgb(255,124,97)] peer-focus:border-solid transition-colors" />
         </span>

@@ -2,11 +2,13 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { LOGO } from "@/lib/images";
 import { Arrow } from "./icons";
 import { clsx } from "clsx";
+import { track } from "@/lib/analytics";
+import { useEscapeClose } from "@/lib/useEscapeClose";
 
 const LINKS = [
   { href: "/#how-it-works", label: "How it works" },
@@ -23,6 +25,13 @@ export function Nav() {
   // under the nav. Drives the nav text / logo / pill from ink → cream so the
   // bar never disappears against a dark panel.
   const [onDark, setOnDark] = useState(false);
+
+  const closeMobileMenu = useCallback(() => {
+    setOpen(false);
+    track("nav_mobile_menu_toggled", { open: false });
+  }, []);
+
+  useEscapeClose(open, closeMobileMenu);
 
   useEffect(() => {
     const onScroll = () => {
@@ -80,7 +89,7 @@ export function Nav() {
 
     observeAll();
 
-    // The HowItWorks resolver mounts the StickyStack/Swiper *after* hydration,
+    // The HowItWorks section can mount its animated content after hydration,
     // so the nav's first query can miss it. Watch for late additions and
     // observe them as they appear.
     const mo = new MutationObserver(() => {
@@ -115,19 +124,22 @@ export function Nav() {
           backgroundColor: scrolled
             ? onDark
               ? "rgba(14, 14, 14, 0.82)"
-              : "rgb(var(--nav-bg) / 0.88)"
+              : "rgba(255, 255, 255, 0.88)"
             : onDark
             ? "rgba(14, 14, 14, 0)"
-            : "rgb(var(--nav-bg) / 0)",
+            : "rgba(255, 255, 255, 0)",
           boxShadow: scrolled
             ? onDark
               ? "0 1px 0 rgba(255, 255, 255, 0.06)"
-              : "0 1px 0 rgb(var(--line) / 0.08)"
-            : "0 1px 0 rgb(var(--line) / 0)",
+              : "0 1px 0 rgba(14, 14, 14, 0.08)"
+            : "0 1px 0 rgba(14, 14, 14, 0)",
           backdropFilter: scrolled ? "blur(12px)" : "blur(0px)",
         }}
         transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-        className="fixed top-0 left-0 right-0 z-50"
+        className={clsx(
+          "fixed top-0 left-0 right-0 z-50 transition-opacity duration-200",
+          open && "md:opacity-100 opacity-0 pointer-events-none",
+        )}
         data-on-dark={onDark ? "true" : "false"}
       >
         {/* Scroll progress — thin accent line that grows as you read */}
@@ -195,7 +207,18 @@ export function Nav() {
               )}
             >
               {LINKS.map((l) => (
-                <a key={l.href} href={l.href} className="ul-link font-medium">
+                <a
+                  key={l.href}
+                  href={l.href}
+                  onClick={() =>
+                    track("cta_clicked", {
+                      cta_name: l.label,
+                      location: "nav_desktop",
+                      target_path: l.href,
+                    })
+                  }
+                  className="ul-link font-medium"
+                >
                   {l.label}
                 </a>
               ))}
@@ -205,6 +228,13 @@ export function Nav() {
               {/* Live Demo — standout external CTA */}
               <Link
                 href="/demo"
+                onClick={() =>
+                  track("cta_clicked", {
+                    cta_name: "live_demo",
+                    location: "nav_desktop",
+                    target_path: "/demo",
+                  })
+                }
                 className={clsx(
                   "hidden md:inline-flex items-center gap-2 rounded-full text-sm font-semibold transition-all duration-300 border",
                   "px-4 py-2",
@@ -235,7 +265,7 @@ export function Nav() {
                     <span
                       className="block absolute left-0 top-0 w-full animate-cat-peek"
                       style={{
-                        backgroundImage: "url('/cat-mascot.png')",
+                        backgroundImage: "url('/cat-mascot.webp')",
                         backgroundSize: "100% auto",
                         backgroundRepeat: "no-repeat",
                         backgroundPosition: "center top",
@@ -246,6 +276,13 @@ export function Nav() {
                 )}
                 <Link
                   href="/waitlist"
+                  onClick={() =>
+                    track("cta_clicked", {
+                      cta_name: "join_waitlist",
+                      location: "nav_desktop",
+                      target_path: "/waitlist",
+                    })
+                  }
                   className="btn-primary text-sm !py-2.5 !px-5 relative z-10"
                 >
                   Join the Waitlist
@@ -255,7 +292,12 @@ export function Nav() {
               <button
                 className="md:hidden relative z-[70] w-11 h-11 rounded-full grid place-items-center bg-ink text-white"
                 aria-label="Menu"
-                onClick={() => setOpen((o) => !o)}
+                onClick={() =>
+                  setOpen((o) => {
+                    track("nav_mobile_menu_toggled", { open: !o });
+                    return !o;
+                  })
+                }
               >
                 <span className="relative block w-5 h-3.5">
                   <span
@@ -288,17 +330,35 @@ export function Nav() {
         <AnimatePresence>
           {open && (
             <motion.div
-              className="w-full px-8 flex flex-col items-center text-center gap-8"
+              className="relative w-full min-h-[100dvh] flex flex-col items-center justify-center px-8 text-center gap-8"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
               transition={{ delay: 0.2, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
             >
+              <button
+                type="button"
+                aria-label="Close menu"
+                className="absolute top-6 right-6 z-10 grid h-12 w-12 place-items-center rounded-full border border-white/20 bg-white/10 text-white backdrop-blur-sm transition-colors hover:bg-white/20"
+                onClick={closeMobileMenu}
+              >
+                <span className="relative block h-5 w-5" aria-hidden>
+                  <span className="absolute left-1/2 top-1/2 h-[2px] w-5 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-full bg-current" />
+                  <span className="absolute left-1/2 top-1/2 h-[2px] w-5 -translate-x-1/2 -translate-y-1/2 -rotate-45 rounded-full bg-current" />
+                </span>
+              </button>
               {LINKS.map((l, i) => (
                 <motion.a
                   key={l.href}
                   href={l.href}
-                  onClick={() => setOpen(false)}
+                  onClick={() => {
+                    track("cta_clicked", {
+                      cta_name: l.label,
+                      location: "nav_mobile_menu",
+                      target_path: l.href,
+                    });
+                    setOpen(false);
+                  }}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.25 + i * 0.08, ease: [0.22, 1, 0.36, 1], duration: 0.6 }}
@@ -315,7 +375,14 @@ export function Nav() {
               >
                 <Link
                   href="/demo"
-                  onClick={() => setOpen(false)}
+                  onClick={() => {
+                    track("cta_clicked", {
+                      cta_name: "live_demo",
+                      location: "nav_mobile_menu",
+                      target_path: "/demo",
+                    });
+                    setOpen(false);
+                  }}
                   className="inline-flex items-center gap-3 rounded-full border border-accent/50 bg-transparent text-accent px-6 py-3 text-lg font-bold"
                 >
                   Live Demo
@@ -330,7 +397,14 @@ export function Nav() {
               >
                 <Link
                   href="/waitlist"
-                  onClick={() => setOpen(false)}
+                  onClick={() => {
+                    track("cta_clicked", {
+                      cta_name: "join_waitlist",
+                      location: "nav_mobile_menu",
+                      target_path: "/waitlist",
+                    });
+                    setOpen(false);
+                  }}
                   className="btn-primary"
                 >
                   Join the Waitlist

@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { SplitText } from "@/components/SplitText";
+import { track } from "@/lib/analytics";
 
 const ITEMS = [
   {
@@ -90,7 +90,16 @@ export function FAQ() {
               >
                 <button
                   className="acc-head"
-                  onClick={() => setOpen(isOpen ? null : i)}
+                  onClick={() => {
+                    const nextOpen = isOpen ? null : i;
+                    setOpen(nextOpen);
+                    if (nextOpen !== null) {
+                      track("faq_opened", {
+                        question_id: `faq_${i + 1}`,
+                        question_index: i,
+                      });
+                    }
+                  }}
                   aria-expanded={isOpen}
                 >
                   <span className="flex items-start gap-5">

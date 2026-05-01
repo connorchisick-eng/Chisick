@@ -26,8 +26,7 @@ export default function DemoPage() {
           The "Back to tabby" pill lives in InteractiveDemo's top bar so it
           sits in-row with the narrative title. */}
       <section
-        className="relative mx-auto max-w-[1440px] px-6 md:px-12 lg:px-16"
-        style={{ paddingTop: "32px", paddingBottom: "20px" }}
+        className="relative mx-auto max-w-[1440px] px-4 pb-[7.5rem] pt-8 sm:px-6 sm:pb-5 md:px-12 lg:px-16"
       >
         <InteractiveDemo />
       </section>

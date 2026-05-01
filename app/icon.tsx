@@ -33,8 +33,8 @@ export default function Icon() {
         >
           <img
             src="https://framerusercontent.com/images/8ziC1H7zLZIh36Br3ZlUaplUabg.png"
-            width="48"
-            height="48"
+            width={48}
+            height={48}
             alt=""
           />
         </div>

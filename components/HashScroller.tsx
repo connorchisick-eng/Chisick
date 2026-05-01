@@ -20,7 +20,7 @@ export function HashScroller() {
       if (!hash) return;
       const el = document.getElementById(hash);
       if (!el) return;
-      // Pinned sections (e.g. Swiper's #how-it-works) trigger their
+      // Pinned sections (e.g. #how-it-works) trigger their
       // ScrollTrigger pin at `top top` — landing them 120px below the nav
       // means the pin hasn't engaged yet and the user has to scroll to
       // activate the animation. For these we want section-top at y=0 and

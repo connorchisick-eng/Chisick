@@ -4,7 +4,9 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
+import posthog from "posthog-js";
 import { LOGO } from "@/lib/images";
+import { lengthBucket, track } from "@/lib/analytics";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
@@ -58,6 +60,17 @@ function CloseIcon({ className = "" }: { className?: string }) {
   );
 }
 
+function posthogContext() {
+  try {
+    return {
+      posthogDistinctId: posthog.get_distinct_id?.(),
+      posthogSessionId: posthog.get_session_id?.(),
+    };
+  } catch {
+    return {};
+  }
+}
+
 export function HelpAgent() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -102,6 +115,12 @@ export function HelpAgent() {
     if (!trimmed || streaming) return;
 
     const history: Msg[] = [...messages, { role: "user", content: trimmed }];
+    const turnCount = history.filter((m) => m.role === "user").length;
+    track("help_message_sent", {
+      message_length_bucket: lengthBucket(trimmed),
+      turn_count: turnCount,
+      route: pathname,
+    });
     setMessages([...history, { role: "assistant", content: "" }]);
     setInput("");
     setStreaming(true);
@@ -110,7 +129,7 @@ export function HelpAgent() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ messages: history }),
+        body: JSON.stringify({ messages: history, ...posthogContext() }),
       });
       if (!res.ok || !res.body) throw new Error("bad response");
 
@@ -127,7 +146,16 @@ export function HelpAgent() {
           return copy;
         });
       }
+      track("help_response_completed", {
+        response_length_bucket: lengthBucket(acc),
+        turn_count: turnCount,
+        route: pathname,
+      });
     } catch {
+      track("help_response_failed", {
+        turn_count: turnCount,
+        route: pathname,
+      });
       setMessages((cur) => {
         const copy = cur.slice();
         copy[copy.length - 1] = {
@@ -171,7 +199,13 @@ export function HelpAgent() {
               damping: 22,
               delay: 0.4,
             }}
-            onClick={() => setOpen(true)}
+            onClick={() => {
+              track("help_agent_opened", {
+                route: pathname,
+                message_count: messages.length,
+              });
+              setOpen(true);
+            }}
             aria-label="Open Tabby help agent"
             className="group fixed right-4 sm:right-6 z-[60] outline-none"
             style={{
@@ -271,7 +305,13 @@ export function HelpAgent() {
                 </div>
               </div>
               <button
-                onClick={() => setOpen(false)}
+                onClick={() => {
+                  track("help_agent_closed", {
+                    route: pathname,
+                    message_count: messages.length,
+                  });
+                  setOpen(false);
+                }}
                 aria-label="Close help agent"
                 className="w-9 h-9 flex-shrink-0 rounded-full flex items-center justify-center hover:bg-cream/10 transition-colors active:scale-95"
               >
@@ -309,7 +349,13 @@ export function HelpAgent() {
                     {SUGGESTIONS.map((s, i) => (
                       <motion.button
                         key={s}
-                        onClick={() => send(s)}
+                        onClick={() => {
+                          track("help_suggestion_clicked", {
+                            suggestion_index: i,
+                            route: pathname,
+                          });
+                          send(s);
+                        }}
                         initial={{ y: 10, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
                         transition={{
@@ -383,7 +429,7 @@ export function HelpAgent() {
             {/* ──── Input ──── */}
             <form
               onSubmit={onSubmit}
-              className="border-t border-ink/10 bg-white px-3.5 sm:px-4 pt-3 pb-2.5 sm:pt-3.5"
+              className="ph-no-capture border-t border-ink/10 bg-white px-3.5 sm:px-4 pt-3 pb-2.5 sm:pt-3.5"
             >
               <div className="flex items-end gap-2">
                 <textarea
@@ -393,7 +439,7 @@ export function HelpAgent() {
                   onKeyDown={onKeyDown}
                   rows={1}
                   placeholder="Ask anything…"
-                  className="flex-1 resize-none bg-transparent text-[16px] sm:text-[0.95rem] text-ink placeholder:text-ink/40 outline-none py-2 max-h-28 leading-[1.4]"
+                  className="ph-no-capture flex-1 resize-none bg-transparent text-[16px] sm:text-[0.95rem] text-ink placeholder:text-ink/40 outline-none py-2 max-h-28 leading-[1.4]"
                 />
                 <button
                   type="submit"

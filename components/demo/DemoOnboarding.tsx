@@ -127,7 +127,8 @@ export function DemoOnboarding({ forceOpen, onClose }: Props) {
                 Walk through a real four-person tab end-to-end —{" "}
                 <span className="text-body font-medium">scan the receipt,</span>{" "}
                 claim what you ate, and settle on a one-time virtual card.
-                Click the dots at the top to jump between scenes any time.
+                Tap through the flow, or jump to the recap whenever you have
+                seen enough.
               </p>
 
               {/* Mobile heads-up — the consolidated mobile warning */}
@@ -138,10 +139,10 @@ export function DemoOnboarding({ forceOpen, onClose }: Props) {
                 />
                 <p className="text-body/75 text-[0.88rem] leading-[1.5]">
                   <span className="font-semibold text-body">
-                    Best on desktop.
+                    Built for touch.
                   </span>{" "}
-                  Mobile works, but the phone-in-phone gets snug — try a wider
-                  screen if you can.
+                  On mobile, use the bottom controls to go back, move forward,
+                  join the waitlist, or skip straight to the recap.
                 </p>
               </div>
 

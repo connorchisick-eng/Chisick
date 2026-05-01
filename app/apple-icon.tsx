@@ -30,8 +30,8 @@ export default function AppleIcon() {
         >
           <img
             src="https://framerusercontent.com/images/8ziC1H7zLZIh36Br3ZlUaplUabg.png"
-            width="132"
-            height="132"
+            width={132}
+            height={132}
             alt=""
           />
         </div>

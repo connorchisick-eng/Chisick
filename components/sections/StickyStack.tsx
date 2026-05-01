@@ -5,6 +5,7 @@ import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { PhoneFrame } from "@/components/PhoneFrame";
 import type { ScreenVariant } from "@/components/Screen";
+import { track } from "@/lib/analytics";
 
 type Step = {
   num: string;
@@ -50,6 +51,22 @@ export function StickyStack() {
   const [active, setActive] = useState(0);
   const [progress, setProgress] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
+  const seenStepsRef = useRef(new Set<number>());
+  const completedRef = useRef(false);
+
+  useEffect(() => {
+    if (seenStepsRef.current.has(active)) return;
+    seenStepsRef.current.add(active);
+    track("how_it_works_step_viewed", {
+      variant: "sticky",
+      step_index: active,
+      step_label: STEPS[active].eyebrow,
+    });
+    if (active === STEPS.length - 1 && !completedRef.current) {
+      completedRef.current = true;
+      track("how_it_works_completed", { variant: "sticky" });
+    }
+  }, [active]);
 
   useEffect(() => {
     const section = sectionRef.current;
@@ -63,9 +80,14 @@ export function StickyStack() {
     gsap.registerPlugin(ScrollTrigger);
     const ctx = gsap.context(() => {
       const n = STEPS.length;
-      // Pin for (n + dwell) viewport heights so each step gets ~1 viewport
-      // of scroll, plus a bit of dwell time on the final step before unpin.
-      const totalUnits = n + 0.5;
+      // Faster pacing: each step gets ~0.55 viewport heights of scroll
+      // (down from ~1.0), plus a small final-step dwell. Total pin length
+      // for 4 steps drops from 4.5vh → ~2.5vh — the section flies past
+      // instead of dragging. Tweak `perStep` to retune; keep `dwell`
+      // modest so the final scene doesn't feel like it's overstaying.
+      const perStep = 0.55;
+      const dwell = 0.25;
+      const totalUnits = n * perStep + dwell;
       // Hysteresis: each step "activates" when progress crosses the midpoint
       // of its slot rather than the leading edge — feels less jumpy than a
       // hard floor() boundary at the slot start.
@@ -80,22 +102,24 @@ export function StickyStack() {
         // perfectly. The default "fixed" pin can lag a frame against the
         // smooth scroller, which reads as a "snap" when the section engages.
         pinType: "transform",
-        // Heavier scrub (1.0 vs 0.6) gives the cross-step transitions more
-        // inertia, so stepping in and out of the pinned section feels eased
-        // rather than abrupt. Lower values are snappier; higher values drift.
-        scrub: 1,
+        // Snappier scrub (0.5 vs 1.0) — at the faster pacing above the
+        // heavier scrub felt like the section was dragging through molasses.
+        // 0.5 keeps just enough easing to avoid hard snaps without adding
+        // perceptible lag behind the scroll position.
+        scrub: 0.5,
         anticipatePin: 1,
         invalidateOnRefresh: true,
         onUpdate: (self) => {
           setProgress(self.progress);
           // Step boundaries with a small dead-zone around each midpoint so a
-          // tiny scroll wobble can't bounce us between two steps.
+          // tiny scroll wobble can't bounce us between two steps. Tighter
+          // dead-zone (8% vs 12%) at the new pacing so steps commit a touch
+          // sooner — slow commits felt laggy with the shorter slots.
           const slot = self.progress * n;
           const candidate = Math.min(n - 1, Math.floor(slot));
           const intra = slot - candidate; // 0..1 within the slot
           if (candidate !== lastIdx) {
-            // Require ~12% travel into a new slot before committing.
-            if (candidate > lastIdx ? intra > 0.12 : intra < 0.88) {
+            if (candidate > lastIdx ? intra > 0.08 : intra < 0.92) {
               lastIdx = candidate;
               setActive(candidate);
             }
@@ -106,7 +130,11 @@ export function StickyStack() {
     return () => ctx.revert();
   }, []);
 
-  // Mobile / reduced-motion: render a simpler inline list instead of pinning.
+  // Mobile / reduced-motion: render the same per-step composition as the
+  // desktop pinned scene (large StepMeta + headline + body + phone) but
+  // stacked vertically. No GSAP pin, no scroll-driven swap — just natural
+  // page scroll. The full visual treatment is preserved; only the timeline
+  // choreography is dropped because pinning fights mobile scroll quirks.
   if (isMobile) {
     return (
       <section
@@ -190,16 +218,19 @@ export function StickyStack() {
             <AnimatePresence initial={false}>
               <motion.div
                 key={STEPS[active].variant}
-                initial={{ opacity: 0, y: 14, scale: 0.97, filter: "blur(8px)" }}
+                initial={{ opacity: 0, y: 12, scale: 0.97, filter: "blur(7px)" }}
                 animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
                 exit={{
                   opacity: 0,
-                  y: -10,
+                  y: -8,
                   scale: 0.97,
-                  filter: "blur(6px)",
-                  transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] },
+                  filter: "blur(5px)",
+                  transition: { duration: 0.32, ease: [0.22, 1, 0.36, 1] },
                 }}
-                transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+                // Faster swap to match the new shorter scroll pacing — at the
+                // old 0.7s/0.55s a quick scroll past two steps would hand off
+                // mid-animation. 0.42s/0.32s lands cleanly inside one slot.
+                transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
                 className="absolute inset-0"
               >
                 <PhoneFrame variant={STEPS[active].variant} />
@@ -214,14 +245,16 @@ export function StickyStack() {
             <AnimatePresence initial={false}>
               <motion.div
                 key={STEPS[active].num}
-                initial={{ opacity: 0, y: 18 }}
+                initial={{ opacity: 0, y: 14 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{
                   opacity: 0,
-                  y: -12,
-                  transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] },
+                  y: -10,
+                  transition: { duration: 0.28, ease: [0.22, 1, 0.36, 1] },
                 }}
-                transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
+                // Copy swap shaved to ~0.4s to keep pace with the faster
+                // pinned scroll; previously 0.65s lagged a beat behind.
+                transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
                 className="absolute inset-0"
               >
                 <StepMeta s={STEPS[active]} active />
@@ -263,81 +296,76 @@ export function StickyStack() {
         ))}
       </div>
 
-      {/* Bottom-center scroll cue. Persistent through the pinned section.
-          Glass pill: arrow chip on the left, primary label + hairline
-          divider + uppercase caption. Copy crossfades, pill stays put. */}
-      <div className="pointer-events-none absolute bottom-12 left-0 right-0 z-30 flex justify-center">
-        <motion.div
-          animate={{
-            backgroundColor:
-              active === STEPS.length - 1
-                ? "rgba(255, 124, 97, 0.14)"
-                : "rgba(14, 14, 14, 0.55)",
-            borderColor:
-              active === STEPS.length - 1
-                ? "rgba(255, 124, 97, 0.5)"
-                : "rgba(248, 244, 240, 0.16)",
-            boxShadow:
-              active === STEPS.length - 1
-                ? "0 24px 60px -18px rgba(255, 124, 97, 0.45)"
-                : "0 24px 60px -18px rgba(0, 0, 0, 0.55)",
-          }}
-          transition={{ duration: 0.4 }}
-          className="flex items-center gap-4 pl-2.5 pr-5 py-2.5 rounded-full backdrop-blur-xl border"
-        >
-          {/* Arrow chip — outer ring + filled inner so it reads as a button
-              shape, not a flat blob. */}
-          <motion.span
-            aria-hidden
-            animate={{ y: [0, 5, 0] }}
-            transition={{
-              duration: 1.5,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
-            className="relative inline-flex w-9 h-9 items-center justify-center rounded-full bg-accent text-cream text-[1rem] font-bold leading-none shrink-0 ring-1 ring-cream/15"
-          >
-            ↓
-          </motion.span>
+      {/* Editorial scroll cue — bottom-LEFT marginalia, anchored at the
+          same x as the step rail so pips (mid-height) + counter (bottom)
+          read as one system. Sits opposite the chat widget's bottom-right
+          corner. Caption row leads with the stroke-arrow; oversized active
+          digit crossfades in place. Last step shifts accent → cream and
+          flips the caption — tonal change, no card chrome. */}
+      <div className="pointer-events-none absolute bottom-9 left-5 z-30 flex justify-start lg:bottom-14 lg:left-7">
+        <div className="flex flex-col items-start gap-3 lg:gap-4">
+          <div className="flex items-center gap-2.5">
+            <motion.span
+              aria-hidden
+              animate={{ y: [0, 4, 0] }}
+              transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+              className="relative inline-flex h-[18px] w-[10px] items-start justify-center"
+            >
+              <span className="absolute top-0 left-1/2 h-3 w-px -translate-x-1/2 bg-cream/55" />
+              <span className="absolute bottom-0 left-1/2 h-[7px] w-[7px] -translate-x-1/2 rotate-45 border-b border-r border-cream/55" />
+            </motion.span>
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.span
+                key={active === STEPS.length - 1 ? "last" : "continue"}
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.3 }}
+                className="block text-[0.66rem] font-bold uppercase tracking-[0.32em] leading-none text-cream/55"
+              >
+                {active === STEPS.length - 1 ? "Final step" : "Keep scrolling"}
+              </motion.span>
+            </AnimatePresence>
+          </div>
 
-          <AnimatePresence mode="wait" initial={false}>
-            {active === STEPS.length - 1 ? (
-              <motion.span
-                key="last"
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.3 }}
-                className="flex items-center gap-3.5 whitespace-nowrap"
-              >
-                <span className="font-grotesk font-semibold text-cream text-[1rem] tracking-[-0.01em] leading-none">
-                  Last step
-                </span>
-                <span aria-hidden className="w-px h-3.5 bg-cream/25" />
-                <span className="text-cream/65 text-[0.66rem] uppercase tracking-[0.24em] font-semibold leading-none">
-                  Scroll past to continue
-                </span>
-              </motion.span>
-            ) : (
-              <motion.span
-                key="continue"
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.3 }}
-                className="flex items-center gap-3.5 whitespace-nowrap"
-              >
-                <span className="font-grotesk font-semibold text-cream text-[1rem] tracking-[-0.01em] leading-none">
-                  Keep scrolling
-                </span>
-                <span aria-hidden className="w-px h-3.5 bg-cream/25" />
-                <span className="text-cream/65 text-[0.66rem] uppercase tracking-[0.24em] font-semibold leading-none tabular-nums">
-                  Step {String(active + 1).padStart(2, "0")} / 0{STEPS.length}
-                </span>
-              </motion.span>
-            )}
-          </AnimatePresence>
-        </motion.div>
+          <div className="flex items-end gap-3 font-grotesk lg:gap-4">
+            <div
+              className="relative tabular-nums"
+              style={{
+                fontSize: "clamp(2.6rem, 4.6vw, 4.4rem)",
+                letterSpacing: "-0.045em",
+                width: "1.95em",
+                height: "0.78em",
+              }}
+            >
+              <AnimatePresence initial={false}>
+                <motion.span
+                  key={active}
+                  initial={{ opacity: 0, y: 14, filter: "blur(8px)" }}
+                  animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                  exit={{ opacity: 0, y: -12, filter: "blur(8px)" }}
+                  transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+                  className={`absolute left-0 bottom-0 block font-bold leading-none transition-colors duration-500 ${
+                    active === STEPS.length - 1 ? "text-cream" : "text-accent"
+                  }`}
+                >
+                  {String(active + 1).padStart(2, "0")}
+                </motion.span>
+              </AnimatePresence>
+            </div>
+            <span aria-hidden className="mb-2 inline-block h-px w-7 bg-cream/25 lg:w-9" />
+            <span
+              className="font-medium leading-none tabular-nums text-cream/35"
+              style={{
+                fontSize: "clamp(1rem, 1.4vw, 1.4rem)",
+                letterSpacing: "0.01em",
+                paddingBottom: "0.12em",
+              }}
+            >
+              0{STEPS.length}
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* Hairline progress bar — pinned to very bottom */}

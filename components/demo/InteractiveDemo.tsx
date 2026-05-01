@@ -23,6 +23,7 @@ import { DemoOnboarding } from "@/components/demo/DemoOnboarding";
 import { FloatingCtas } from "@/components/demo/FloatingCtas";
 import { useEscapeClose } from "@/lib/useEscapeClose";
 import { useReducedMotion } from "@/lib/useReducedMotion";
+import { track } from "@/lib/analytics";
 
 // ─────────────────────────────────────────────────────────────────
 // Tabby palette — locked to Figma tokens
@@ -119,6 +120,14 @@ const NPC_CLAIMS: { diner: Diner; itemId: string; delayMs: number }[] = [
   { diner: "sam", itemId: "cala", delayMs: 6300 },
   { diner: "jake", itemId: "spark", delayMs: 7100 },
 ];
+
+const SOLO_SHAREABLE_RESPONSE_BY_ITEM: Partial<Record<string, Diner>> = {
+  dip: "maya",
+  cala: "sam",
+  marg: "jake",
+  ipa: "sam",
+  wine: "jake",
+};
 
 const PAYMENT_METHODS: PaymentMethod[] = [
   { id: "boa", group: "bank", name: "Bank of America", meta: "Fees apply", logo: "BoA", logoBg: "#E31837" },
@@ -357,6 +366,8 @@ function shareForDiner(
   customSplits: State["customSplits"],
   diner: Diner,
 ): number {
+  // Demo math is display-only; move this to integer cents before reusing
+  // it in real payment code.
   let sum = 0;
   for (const item of ITEMS) {
     const claimedBy = claims[item.id] ?? [];
@@ -418,6 +429,7 @@ const STEP_ORDER: Screen[] = [
   "sugarfish",
   "replay",
 ];
+const PRO_SCREENS = new Set<Screen>(["insights", "sugarfish"]);
 const STEP_LABEL: Record<Screen, string> = {
   dashboard: "Tabby Demo",
   friends: "Friends",
@@ -475,9 +487,14 @@ const EXIT_CONFIRM_AFTER_STEP = 5;
 
 export function InteractiveDemo() {
   const router = useRouter();
-  const [state, dispatch] = useReducer(reducer, INITIAL);
+  const [state, rawDispatch] = useReducer(reducer, INITIAL);
   const [helpOpen, setHelpOpen] = useState(false);
   const [exitConfirmOpen, setExitConfirmOpen] = useState(false);
+  const demoStartedAt = useRef<number>(Date.now());
+  const deepestStepRef = useRef(0);
+  const seenScenesRef = useRef(new Set<Screen>());
+  const completedRef = useRef(false);
+  const stateRef = useRef(state);
 
   const yourSubtotal = shareForDiner(state.claims, state.customSplits, "you");
   const tipPct = typeof state.tipPct === "number" ? state.tipPct : 0;
@@ -486,6 +503,124 @@ export function InteractiveDemo() {
   const yourTotal = yourSubtotal + tip + tax;
 
   const stepIdx = STEP_ORDER.indexOf(state.screen);
+  const isProScreen = PRO_SCREENS.has(state.screen);
+
+  stateRef.current = state;
+  deepestStepRef.current = Math.max(deepestStepRef.current, stepIdx);
+
+  const demoBaseProps = (screen = state.screen) => ({
+    demo_screen: screen,
+    step_index: STEP_ORDER.indexOf(screen),
+    phase: PHASES[screen],
+    deepest_step_index: deepestStepRef.current,
+  });
+
+  const dispatch = (action: Action) => {
+    const fromScreen = stateRef.current.screen;
+    const fromStepIndex = STEP_ORDER.indexOf(fromScreen);
+    const actionProps: Record<string, string | number | boolean | null | undefined> = {
+      ...demoBaseProps(fromScreen),
+      action_type: action.type,
+    };
+
+    if (action.type === "GOTO") {
+      const targetStepIndex = STEP_ORDER.indexOf(action.screen);
+      actionProps.target_screen = action.screen;
+      actionProps.target_step_index = targetStepIndex;
+      actionProps.navigation_method = "demo_control";
+      track("demo_screen_navigated", {
+        from_screen: fromScreen,
+        target_screen: action.screen,
+        from_step_index: fromStepIndex,
+        target_step_index: targetStepIndex,
+        phase: PHASES[action.screen],
+        deepest_step_index: Math.max(deepestStepRef.current, targetStepIndex),
+      });
+    } else if (action.type === "OPEN_HISTORY") {
+      actionProps.history_index = action.idx;
+    } else if (action.type === "TOGGLE_CLAIM" || action.type === "NPC_CLAIM") {
+      actionProps.item_id = action.itemId;
+      actionProps.diner = action.diner;
+      actionProps.is_user_action = action.type === "TOGGLE_CLAIM";
+    } else if (action.type === "SET_TIP") {
+      actionProps.tip_pct = action.pct;
+    } else if (action.type === "PICK_PAYMENT") {
+      actionProps.payment_id = action.id;
+      actionProps.payment_group = PAYMENT_METHODS.find((m) => m.id === action.id)?.group;
+    } else if (action.type === "SET_CURRENCY") {
+      actionProps.currency = action.currency;
+    } else if (action.type === "GOTO_SPLIT_PHASE") {
+      actionProps.split_phase = action.phase;
+    }
+
+    track("demo_action", actionProps);
+    rawDispatch(action);
+  };
+
+  useEffect(() => {
+    track("demo_started", demoBaseProps());
+
+    const onPageHide = () => {
+      const current = stateRef.current;
+      if (current.screen === "replay") return;
+      track("demo_abandoned", {
+        ...demoBaseProps(current.screen),
+        duration_seconds: Math.round((Date.now() - demoStartedAt.current) / 1000),
+      });
+    };
+
+    window.addEventListener("pagehide", onPageHide);
+    return () => {
+      window.removeEventListener("pagehide", onPageHide);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!seenScenesRef.current.has(state.screen)) {
+      seenScenesRef.current.add(state.screen);
+      track("demo_scene_viewed", demoBaseProps(state.screen));
+    }
+    if (state.screen === "replay" && !completedRef.current) {
+      completedRef.current = true;
+      track("demo_completed", {
+        ...demoBaseProps(state.screen),
+        duration_seconds: Math.round((Date.now() - demoStartedAt.current) / 1000),
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.screen]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+      if (stateRef.current.splitModal || helpOpen || exitConfirmOpen) return;
+
+      const target = event.target as HTMLElement | null;
+      const tag = target?.tagName.toLowerCase();
+      const isFormField =
+        tag === "input" ||
+        tag === "textarea" ||
+        tag === "select" ||
+        target?.isContentEditable;
+      if (isFormField) return;
+
+      const currentIdx = STEP_ORDER.indexOf(stateRef.current.screen);
+      const nextIdx =
+        event.key === "ArrowLeft"
+          ? Math.max(0, currentIdx - 1)
+          : Math.min(STEP_ORDER.length - 1, currentIdx + 1);
+      if (nextIdx === currentIdx) return;
+
+      event.preventDefault();
+      dispatch({ type: "GOTO", screen: STEP_ORDER[nextIdx] });
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exitConfirmOpen, helpOpen]);
 
   return (
     <div className="mx-auto max-w-[1440px] flex flex-col">
@@ -497,9 +632,7 @@ export function InteractiveDemo() {
       <div
         className={clsx(
           "flex items-center justify-between gap-6 md:gap-10 flex-wrap",
-          state.screen === "insights" || state.screen === "sugarfish"
-            ? ""
-            : "mb-4 md:mb-6",
+          "mb-4 md:mb-6",
         )}
       >
         <div className="flex items-center gap-3 md:gap-6 flex-wrap relative">
@@ -508,8 +641,13 @@ export function InteractiveDemo() {
             aria-label="Back to Tabby"
             onClick={() => {
               if (stepIdx > EXIT_CONFIRM_AFTER_STEP) {
+                track("demo_exit_attempted", demoBaseProps());
                 setExitConfirmOpen(true);
               } else {
+                track("demo_exit_confirmed", {
+                  ...demoBaseProps(),
+                  method: "back_to_site",
+                });
                 router.push("/");
               }
             }}
@@ -547,7 +685,10 @@ export function InteractiveDemo() {
                 <div className="mt-4 flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => setExitConfirmOpen(false)}
+                    onClick={() => {
+                      track("demo_exit_cancelled", demoBaseProps());
+                      setExitConfirmOpen(false);
+                    }}
                     className="flex-1 px-3 py-2 rounded-full text-[0.78rem] font-semibold uppercase tracking-[0.18em] border border-line/15 text-body/65 hover:text-body hover:border-body/30 transition-colors"
                   >
                     Stay
@@ -555,6 +696,10 @@ export function InteractiveDemo() {
                   <button
                     type="button"
                     onClick={() => {
+                      track("demo_exit_confirmed", {
+                        ...demoBaseProps(),
+                        method: "confirm_dialog",
+                      });
                       setExitConfirmOpen(false);
                       router.push("/");
                     }}
@@ -592,14 +737,18 @@ export function InteractiveDemo() {
                 />
               )}
               {NARRATIVES[state.screen].title}
+              {isProScreen && (
+                <span className="inline-flex items-center rounded-full bg-accent px-2.5 py-1 align-middle text-[0.52rem] font-bold uppercase leading-none tracking-[0.18em] text-white shadow-[0_8px_20px_-10px_rgba(255,124,97,0.9)] md:px-3 md:text-[0.58rem]">
+                  Pro
+                </span>
+              )}
             </motion.h2>
           </AnimatePresence>
         </div>
 
         <div className="flex items-center gap-3 md:gap-6 flex-wrap">
-          {/* Mobile prev/next — replaces the cramped 15-dot stepper on
-              narrow viewports. Hidden at sm+ where dots fit comfortably. */}
-          <div className="flex sm:hidden items-center gap-2">
+          {/* Prev/next controls stay visible for mouse and keyboard users. */}
+          <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => {
@@ -608,6 +757,7 @@ export function InteractiveDemo() {
               }}
               disabled={stepIdx === 0}
               aria-label="Previous scene"
+              aria-disabled={stepIdx === 0}
               className="w-7 h-7 rounded-full border border-line/15 text-body/65 hover:text-body hover:border-accent/40 disabled:opacity-30 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
             >
               <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden>
@@ -622,6 +772,7 @@ export function InteractiveDemo() {
               }}
               disabled={stepIdx === STEP_ORDER.length - 1}
               aria-label="Next scene"
+              aria-disabled={stepIdx === STEP_ORDER.length - 1}
               className="w-7 h-7 rounded-full border border-line/15 text-body/65 hover:text-body hover:border-accent/40 disabled:opacity-30 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
             >
               <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden>
@@ -630,24 +781,36 @@ export function InteractiveDemo() {
             </button>
           </div>
 
-          {/* Dot stepper — visible at sm+; below sm we use the arrows above. */}
-          <div className="hidden sm:flex items-center gap-1 md:gap-2.5">
+          {/* Dot stepper keeps the 5px visual dots while exposing larger hit areas. */}
+          <div
+            role="tablist"
+            aria-label="Demo screens"
+            className="hidden sm:flex items-center gap-1 md:gap-2.5"
+          >
             {STEP_ORDER.map((s, i) => {
               const active = i === stepIdx;
               const done = i < stepIdx;
               return (
                 <button
                   key={s}
+                  type="button"
+                  role="tab"
                   onClick={() => dispatch({ type: "GOTO", screen: s })}
                   aria-label={`Go to ${STEP_LABEL[s]}`}
-                  aria-current={active ? "step" : undefined}
-                  className="rounded-full transition-all shrink-0"
-                  style={{
-                    height: 5,
-                    width: active ? 16 : 5,
-                    background: active ? T.accent : done ? T.green : "rgba(14,14,14,0.15)",
-                  }}
-                />
+                  aria-selected={active}
+                  aria-controls="phone-screen"
+                  className="grid min-h-6 min-w-6 place-items-center rounded-full transition-all shrink-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                >
+                  <span
+                    aria-hidden
+                    className="rounded-full transition-all"
+                    style={{
+                      height: 5,
+                      width: active ? 16 : 5,
+                      background: active ? T.accent : done ? T.green : "rgba(14,14,14,0.15)",
+                    }}
+                  />
+                </button>
               );
             })}
           </div>
@@ -661,9 +824,13 @@ export function InteractiveDemo() {
           </span>
 
           <button
-            onClick={() => dispatch({ type: "RESET" })}
-            className="text-[10px] md:text-[11px] uppercase tracking-[0.22em] font-semibold transition px-2.5 py-1 md:px-3 md:py-1.5 rounded-full hover:bg-line/5"
-            style={{ color: T.gray }}
+            type="button"
+            onClick={() => {
+              track("demo_reset", demoBaseProps());
+              dispatch({ type: "RESET" });
+            }}
+            className="text-[10px] md:text-[11px] uppercase tracking-[0.22em] font-semibold transition px-3 py-1.5 md:px-3.5 md:py-2 rounded-full border border-line/20 hover:border-accent/45 hover:bg-accent/[0.06]"
+            style={{ color: T.ink }}
           >
             ↺ reset
           </button>
@@ -682,7 +849,7 @@ export function InteractiveDemo() {
           screens, with vertical padding so it breathes between the top
           bar and the phone screen. Renders nothing on other screens so
           the phone sits tight to the top bar. */}
-      {(state.screen === "insights" || state.screen === "sugarfish") && (
+      {/* Deprecated floating pro pill removed; badge now lives beside the title.
         <div className="flex justify-center" style={{ paddingTop: "6px", paddingBottom: "10px" }}>
           <span
             className="inline-flex items-center uppercase font-bold whitespace-nowrap"
@@ -699,7 +866,7 @@ export function InteractiveDemo() {
             Pro · Coming later
           </span>
         </div>
-      )}
+      */}
 
       {/* Body grid — narrative panel + phone. Stacks on mobile/tablet
           with phone first, narrative below. Two-column at lg+ with the
@@ -736,7 +903,35 @@ export function InteractiveDemo() {
           replay screen, which already has its own prominent CTAs. */}
       <FloatingCtas
         visible={state.screen !== "replay"}
-        onSkipToRecap={() => dispatch({ type: "GOTO", screen: "replay" })}
+        onSkipToRecap={() => {
+          track("demo_action", {
+            ...demoBaseProps(),
+            action_type: "SKIP_TO_RECAP",
+            target_screen: "replay",
+          });
+          dispatch({ type: "GOTO", screen: "replay" });
+        }}
+      />
+      <MobileDemoBar
+        visible={state.screen !== "replay"}
+        screen={state.screen}
+        stepIdx={stepIdx}
+        onPrev={() => {
+          const prev = STEP_ORDER[Math.max(0, stepIdx - 1)];
+          dispatch({ type: "GOTO", screen: prev });
+        }}
+        onNext={() => {
+          const next = STEP_ORDER[Math.min(STEP_ORDER.length - 1, stepIdx + 1)];
+          dispatch({ type: "GOTO", screen: next });
+        }}
+        onSkipToRecap={() => {
+          track("demo_action", {
+            ...demoBaseProps(),
+            action_type: "MOBILE_SKIP_TO_RECAP",
+            target_screen: "replay",
+          });
+          dispatch({ type: "GOTO", screen: "replay" });
+        }}
       />
     </div>
   );
@@ -751,38 +946,123 @@ export function InteractiveDemo() {
 // from the side the user is moving *toward*; old content slides out the
 // opposite way. A small filter blur softens the swap without feeling
 // laggy. Children inherit the timing and animate in a quick cascade.
+function MobileDemoBar({
+  visible,
+  screen,
+  stepIdx,
+  onPrev,
+  onNext,
+  onSkipToRecap,
+}: {
+  visible: boolean;
+  screen: Screen;
+  stepIdx: number;
+  onPrev: () => void;
+  onNext: () => void;
+  onSkipToRecap: () => void;
+}) {
+  if (!visible) return null;
+
+  const isFirst = stepIdx === 0;
+  const isLast = stepIdx === STEP_ORDER.length - 1;
+
+  return (
+    <div
+      className="fixed left-3 right-3 z-50 sm:hidden rounded-2xl border border-line/12 bg-white/94 px-3 pb-3 pt-2.5 shadow-[0_18px_48px_-18px_rgba(14,14,14,0.38)] backdrop-blur"
+      style={{ bottom: "max(env(safe-area-inset-bottom), 0.75rem)" }}
+    >
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <span className="text-[0.66rem] font-semibold uppercase tracking-[0.22em] text-body/45 tabular-nums">
+          {String(stepIdx + 1).padStart(2, "0")}/{STEP_ORDER.length}
+        </span>
+        <button
+          type="button"
+          onClick={onSkipToRecap}
+          className="min-h-8 rounded-full px-2.5 text-[0.66rem] font-semibold uppercase tracking-[0.18em] text-body/50 transition-colors active:bg-body/8 active:text-body"
+        >
+          Skip recap
+        </button>
+      </div>
+
+      <div className="mb-3 h-1 overflow-hidden rounded-full bg-body/10">
+        <span
+          className="block h-full rounded-full bg-accent transition-all duration-500"
+          style={{ width: `${((stepIdx + 1) / STEP_ORDER.length) * 100}%` }}
+        />
+      </div>
+
+      <div className="grid grid-cols-[44px_1fr_1.35fr] gap-2">
+        <button
+          type="button"
+          onClick={onPrev}
+          disabled={isFirst}
+          aria-label="Previous scene"
+          className="min-h-11 rounded-full border border-line/15 text-body/65 transition-colors active:bg-body/8 disabled:opacity-35"
+        >
+          <span aria-hidden>‹</span>
+        </button>
+        <button
+          type="button"
+          onClick={onNext}
+          disabled={isLast}
+          className="min-h-11 rounded-full border border-line/15 px-3 text-[0.78rem] font-semibold uppercase tracking-[0.18em] text-body transition-colors active:bg-body/8 disabled:opacity-35"
+        >
+          Next
+        </button>
+        <Link
+          href="/waitlist"
+          onClick={() =>
+            track("cta_clicked", {
+              cta_name: "join_waitlist",
+              location: "demo_mobile_bar",
+              target_path: "/waitlist",
+              demo_screen: screen,
+            })
+          }
+          className="inline-flex min-h-11 items-center justify-center rounded-full bg-accent px-3 text-center text-[0.78rem] font-semibold uppercase tracking-[0.14em] text-white shadow-[0_14px_30px_-14px_rgba(255,124,97,0.9)] active:scale-[0.98]"
+        >
+          Join
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 const scenePanelVariants: Variants = {
   initial: (direction: number) => ({
     opacity: 0,
-    x: direction * 36,
-    filter: "blur(6px)",
+    x: direction * 18,
+    y: 12,
+    filter: "blur(8px)",
   }),
   animate: {
     opacity: 1,
     x: 0,
+    y: 0,
     filter: "blur(0px)",
     transition: {
-      duration: 0.55,
+      duration: 0.72,
       ease: [0.22, 1, 0.36, 1],
       when: "beforeChildren",
-      staggerChildren: 0.05,
-      delayChildren: 0.04,
+      staggerChildren: 0.065,
+      delayChildren: 0.03,
     },
   },
   exit: (direction: number) => ({
     opacity: 0,
-    x: -direction * 36,
-    filter: "blur(6px)",
-    transition: { duration: 0.28, ease: [0.76, 0, 0.24, 1] },
+    x: -direction * 14,
+    y: -8,
+    filter: "blur(8px)",
+    transition: { duration: 0.42, ease: [0.4, 0, 0.2, 1] },
   }),
 };
 
 const sceneChildVariants: Variants = {
-  initial: { opacity: 0, y: 10 },
+  initial: { opacity: 0, y: 14 },
   animate: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.45, ease: [0.22, 1, 0.36, 1] },
+    transition: { duration: 0.58, ease: [0.22, 1, 0.36, 1] },
   },
 };
 
@@ -855,7 +1135,7 @@ function NarrativePanel({
         }}
         className="relative overflow-hidden mt-8"
       >
-        <AnimatePresence mode="wait" custom={direction}>
+        <AnimatePresence mode="popLayout" initial={false} custom={direction}>
           <motion.div
             key={screen}
             custom={direction}
@@ -1133,14 +1413,14 @@ type RouterProps = {
 function PhoneRouter(props: RouterProps) {
   const reduced = useReducedMotion();
   return (
-    <div className="absolute inset-0">
+    <div id="phone-screen" role="tabpanel" className="absolute inset-0">
       <AnimatePresence mode="wait">
         <motion.div
           key={props.state.screen}
-          initial={reduced ? false : { opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={reduced ? { opacity: 1 } : { opacity: 0 }}
-          transition={{ duration: reduced ? 0 : 0.32 }}
+          initial={reduced ? false : { opacity: 0, y: 10, filter: "blur(8px)" }}
+          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+          exit={reduced ? { opacity: 1 } : { opacity: 0, y: -8, filter: "blur(8px)" }}
+          transition={{ duration: reduced ? 0 : 0.42, ease: [0.22, 1, 0.36, 1] }}
           className="absolute inset-0"
         >
           {props.state.screen === "camera" && <CameraScreen {...props} />}
@@ -1591,14 +1871,9 @@ function ItemsScreen({ state, dispatch }: RouterProps) {
         !respondedRef.current.has(item.id)
       ) {
         respondedRef.current.add(item.id);
-        // Only ~55% of solo claims get an NPC response, so sometimes
-        // shared items stay yours — feels more natural than "always".
-        if (Math.random() > 0.55) continue;
-        const npcs = (["maya", "sam", "jake"] as Diner[]).filter(
-          (d) => !claimedBy.includes(d),
-        );
-        if (npcs.length === 0) continue;
-        const npc = npcs[Math.floor(Math.random() * npcs.length)];
+        // Deterministic responses keep demo screenshots and recordings stable.
+        const npc = SOLO_SHAREABLE_RESPONSE_BY_ITEM[item.id];
+        if (!npc || claimedBy.includes(npc)) continue;
         // Near-instant — friend "joins" you on this item right after you tap.
         timeouts.push(
           setTimeout(() => {
@@ -5746,7 +6021,14 @@ function ReplayScreen({ dispatch }: RouterProps) {
       {/* CTAs pinned to bottom */}
       <div style={{ padding: "0 7% 7.2cqw", display: "flex", flexDirection: "column", gap: "2.4cqw" }}>
         <button
-          onClick={() => dispatch({ type: "RESET" })}
+          onClick={() => {
+            track("demo_reset", {
+              demo_screen: "replay",
+              step_index: STEP_ORDER.indexOf("replay"),
+              phase: PHASES.replay,
+            });
+            dispatch({ type: "RESET" });
+          }}
           className="w-full font-bold transition active:scale-95"
           style={{
             borderRadius: "999px",
@@ -5761,6 +6043,14 @@ function ReplayScreen({ dispatch }: RouterProps) {
         </button>
         <a
           href="/waitlist"
+          onClick={() =>
+            track("cta_clicked", {
+              cta_name: "join_waitlist",
+              location: "demo_replay",
+              target_path: "/waitlist",
+              demo_screen: "replay",
+            })
+          }
           className="w-full font-bold transition active:scale-95 text-center"
           style={{
             borderRadius: "999px",

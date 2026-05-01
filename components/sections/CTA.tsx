@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { track } from "@/lib/analytics";
 
 export function CTA() {
   const ref = useRef<HTMLDivElement>(null);
@@ -29,6 +30,7 @@ export function CTA() {
     <section
       ref={ref}
       data-nav-invert
+      data-analytics-section="final_cta"
       className="relative bg-ink text-cream overflow-hidden flex flex-col items-center justify-start pt-24 lg:pt-32 pb-16 lg:pb-20"
     >
       <div className="noise" />
@@ -98,6 +100,13 @@ export function CTA() {
             <Link
               href="/waitlist"
               aria-label="Join the waitlist"
+              onClick={() =>
+                track("cta_clicked", {
+                  cta_name: "join_waitlist",
+                  location: "final_cta_stamp",
+                  target_path: "/waitlist",
+                })
+              }
               className="group relative flex items-center justify-center w-[150px] h-[150px] sm:w-[180px] sm:h-[180px] rounded-full transition-transform duration-500 hover:scale-[1.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-4 focus-visible:ring-offset-ink animate-stamp-pulse"
             >
               {/* Rotating outer ring with repeating CTA text */}

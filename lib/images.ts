@@ -48,5 +48,9 @@ export const TALL_VARIANTS: Set<ScreenVariant> = new Set([
   "smart-receipts",
 ]);
 
+export function screenImageSrc(variant: ScreenVariant) {
+  return `/screens/${variant}.webp`;
+}
+
 export const LOGO =
   "https://framerusercontent.com/images/8ziC1H7zLZIh36Br3ZlUaplUabg.png";

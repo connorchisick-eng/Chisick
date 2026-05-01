@@ -20,6 +20,7 @@ export function ClawReveal() {
     if (!svg) return;
 
     const paths = svg.querySelectorAll<SVGPathElement>(".claw-path");
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     // Measure each path's real length for stroke-dashoffset animation
     paths.forEach((p) => {
@@ -35,21 +36,34 @@ export function ClawReveal() {
       el.style.transform = "translateY(16px)";
     });
 
+    if (reduced) {
+      paths.forEach((p) => {
+        p.style.strokeDashoffset = "0";
+      });
+      svg.style.opacity = "0";
+      [line1Ref.current, line2Ref.current].forEach((el) => {
+        if (!el) return;
+        el.style.opacity = "1";
+        el.style.transform = "translateY(0)";
+      });
+      return;
+    }
+
     const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
 
     // Two decisive claw swipes, each a cluster of 4 parallel claws
     const swipe1 = svg.querySelectorAll(".swipe-1 .claw-path");
     const swipe2 = svg.querySelectorAll(".swipe-2 .claw-path");
 
-    tl.to(swipe1, { strokeDashoffset: 0, duration: 0.38, stagger: 0.03 }, 0.1);
-    tl.to(swipe2, { strokeDashoffset: 0, duration: 0.38, stagger: 0.03 }, 0.42);
+    tl.to(swipe1, { strokeDashoffset: 0, duration: 0.32, stagger: 0.025 }, 0.05);
+    tl.to(swipe2, { strokeDashoffset: 0, duration: 0.34, stagger: 0.025 }, 0.3);
 
     // After scratches have been visible for ~1.8s, gracefully fade them out
     if (svg) {
       tl.to(
         svg,
-        { opacity: 0, duration: 1.1, ease: "power2.inOut" },
-        2.8,
+        { opacity: 0, duration: 0.55, ease: "power2.out" },
+        1.05,
       );
     }
 
@@ -57,15 +71,15 @@ export function ClawReveal() {
     if (line1Ref.current) {
       tl.to(
         line1Ref.current,
-        { opacity: 1, y: 0, duration: 0.7, ease: "expo.out" },
-        0.28,
+        { opacity: 1, y: 0, duration: 0.58, ease: "expo.out" },
+        0.18,
       );
     }
     if (line2Ref.current) {
       tl.to(
         line2Ref.current,
-        { opacity: 1, y: 0, duration: 0.8, ease: "expo.out" },
-        0.52,
+        { opacity: 1, y: 0, duration: 0.62, ease: "expo.out" },
+        0.34,
       );
     }
 

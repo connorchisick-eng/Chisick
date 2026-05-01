@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import Image from "next/image";
 import type { ScreenVariant } from "./Screen";
 import { Screen } from "./Screen";
-import { TALL_VARIANTS } from "@/lib/images";
+import { screenImageSrc, TALL_VARIANTS } from "@/lib/images";
 
 // Variants rendered as first-class React components instead of PNGs.
 // Empty for now — the Figma-rendered PNG for "tip" is the source of truth.
@@ -57,6 +57,7 @@ export function Phone({ variant, className, shadow = true, tilt = false }: Props
   }, [tilt]);
 
   const isTall = TALL_VARIANTS.has(variant);
+  const src = screenImageSrc(variant);
 
   return (
     <div
@@ -79,7 +80,7 @@ export function Phone({ variant, className, shadow = true, tilt = false }: Props
         // becomes visible on a loop instead of getting cropped.
         <div className="absolute inset-0 overflow-hidden">
           <img
-            src={`/screens/${variant}.png`}
+            src={src}
             alt={`Tabby ${variant} screen`}
             className="block w-full h-auto pointer-events-none phone-tall-scroll"
             draggable={false}
@@ -87,7 +88,7 @@ export function Phone({ variant, className, shadow = true, tilt = false }: Props
         </div>
       ) : (
         <Image
-          src={`/screens/${variant}.png`}
+          src={src}
           alt={`Tabby ${variant} screen`}
           fill
           sizes="(max-width: 768px) 70vw, 420px"

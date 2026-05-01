@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { LegalPage } from "@/components/LegalPage";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy — Tabby",
+  title: "Privacy Policy - Tabby",
 };
 
 export default function PrivacyPage() {
@@ -12,8 +12,8 @@ export default function PrivacyPage() {
       monogram="P."
       title="Privacy Policy."
       accentWord="Privacy"
-      updated="April 18, 2026"
-      effective="April 18, 2026"
+      updated="May 1, 2026"
+      effective="May 1, 2026"
       outroTagline="your data, in the open"
       outroQuestion="Questions about your data?"
       intro={
@@ -21,26 +21,27 @@ export default function PrivacyPage() {
           This Privacy Policy describes how Tabby (&quot;we,&quot; &quot;us,&quot;
           or &quot;our&quot;) collects, uses, and protects information on{" "}
           <strong>splittabby.com</strong> while the product is in development.
-          We collect the minimum we need to reach you at launch — nothing more,
-          nothing sold, nothing shared with anyone trying to sell you something.
+          We collect the minimum we need to run the waitlist, understand site
+          performance, answer Tabby questions, and protect the site from abuse.
+          We do not sell your personal information or use it for third-party ads.
         </>
       }
       summary={[
         {
           label: "Data we collect",
-          text: "Your phone number (required) and your name (optional). Plus standard browser metadata to prevent abuse.",
+          text: "Email is required for the waitlist. Name and phone are optional. We also process basic browser, analytics, and abuse-prevention metadata.",
         },
         {
           label: "Where it lives",
-          text: "Encrypted in transit. Stored in a managed Postgres database we control, behind an IP allowlist.",
+          text: "Waitlist entries are stored with a managed database provider. Site traffic is served over HTTPS, and internal credentials are not exposed to the browser.",
         },
         {
           label: "Who sees it",
-          text: "Only Tabby and our hosting + AI providers. Never sold. Never used for third-party advertising.",
+          text: "Tabby and service providers that operate the site, analytics, database, and AI assistant. Never sold.",
         },
         {
           label: "Your control",
-          text: "Delete, correct, or export your data anytime. Reach out via Ask Tabby in the corner — we respond within 30 days.",
+          text: "You can ask us to delete, correct, or export waitlist data associated with your email when a direct privacy contact is published.",
         },
       ]}
       sections={[
@@ -50,33 +51,46 @@ export default function PrivacyPage() {
           content: (
             <>
               <p>
-                At this pre-launch stage we collect only what you submit through
-                the waitlist form and what your browser automatically provides:
+                At this pre-launch stage we collect what you submit through the
+                waitlist form, what your browser automatically provides, and
+                limited product analytics:
               </p>
               <ul>
                 <li>
-                  <strong>Name</strong> — optional, as entered on the waitlist
+                  <strong>Email address</strong> - required to join the
+                  waitlist and receive launch or beta updates.
+                </li>
+                <li>
+                  <strong>Name</strong> - optional, as entered on the waitlist
                   form.
                 </li>
                 <li>
-                  <strong>Phone number</strong> — required to join the waitlist
-                  and reach you at launch.
+                  <strong>Phone number</strong> - optional. If you enter one,
+                  the form sends it only when it looks complete; partial phone
+                  entries are dropped instead of blocking signup.
                 </li>
                 <li>
-                  <strong>Technical metadata</strong> — your IP address,
+                  <strong>Technical metadata</strong> - your IP address,
                   user-agent (browser/OS), and the page you came from (HTTP
-                  referer). Used only to prevent abuse and debug errors.
+                  referer). Used to prevent abuse, rate-limit submissions,
+                  debug errors, and understand whether the site is working.
                 </li>
                 <li>
-                  <strong>Support chat</strong> — messages you send through the
+                  <strong>Analytics data</strong> - page views, button clicks,
+                  waitlist funnel events, approximate source/landing page, and
+                  similar usage data collected through our analytics tools.
+                  Those tools may use cookies or browser storage.
+                </li>
+                <li>
+                  <strong>Support chat</strong> - messages you send through the
                   &quot;Ask Tabby&quot; AI assistant are processed by our AI
-                  provider (Anthropic) to generate responses. We do not store
-                  chat transcripts on our servers.
+                  infrastructure providers to generate responses. We do not
+                  store chat transcripts in the waitlist database.
                 </li>
               </ul>
               <p>
                 We do not collect payment information, location, contacts, or
-                biometric data at this time.
+                biometric data on this pre-launch website.
               </p>
             </>
           ),
@@ -87,17 +101,18 @@ export default function PrivacyPage() {
           content: (
             <>
               <ul>
-                <li>To notify you when Tabby launches.</li>
+                <li>To notify you about launch, beta access, and product updates.</li>
                 <li>
-                  To send occasional product updates related to the waitlist
-                  (no more than a few messages before launch).
+                  To manage the waitlist, deduplicate entries, and understand
+                  which launch messages are useful.
                 </li>
-                <li>To operate, secure, and improve the website.</li>
+                <li>To operate, secure, analyze, and improve the website.</li>
+                <li>To answer Tabby-related questions through the AI assistant.</li>
               </ul>
               <p>
                 We do not sell your information. We do not use it for
                 third-party advertising. We do not build a shadow profile of
-                you or sync our list with ad networks.
+                you or sync our waitlist with ad networks.
               </p>
             </>
           ),
@@ -107,11 +122,10 @@ export default function PrivacyPage() {
           title: "How we store it",
           content: (
             <p>
-              Waitlist entries are stored in a managed PostgreSQL database
-              hosted by our infrastructure partner. Connections are encrypted
-              in transit (TLS 1.2+). Database access requires a rotating
-              credential known only to the Tabby team and is restricted by IP
-              allowlist. Backups are encrypted at rest.
+              Waitlist entries are stored with a managed database provider.
+              Connections to the site use HTTPS. Internal credentials are not
+              exposed to the browser. We keep access limited to people and
+              systems that need it to run the waitlist.
             </p>
           ),
         },
@@ -126,17 +140,27 @@ export default function PrivacyPage() {
               </p>
               <ul>
                 <li>
-                  <strong>Hosting provider</strong> — serves the site and
-                  stores the database.
+                  <strong>Hosting and infrastructure providers</strong> - serve
+                  the site and run the systems needed to process waitlist and
+                  chat requests.
                 </li>
                 <li>
-                  <strong>AI provider</strong> — processes chat messages if you
-                  use the &quot;Ask Tabby&quot; assistant.
+                  <strong>Database provider</strong> - stores waitlist entries
+                  and related technical metadata.
+                </li>
+                <li>
+                  <strong>Analytics provider</strong> - measures page views,
+                  conversion events, and product-interest signals.
+                </li>
+                <li>
+                  <strong>AI infrastructure provider</strong> - processes chat
+                  messages if you use the &quot;Ask Tabby&quot; assistant.
                 </li>
               </ul>
               <p>
-                We will disclose information if required by law, subpoena, or
-                to protect the rights or safety of users.
+                We may disclose information if required by law, subpoena, court
+                order, or to protect the rights, safety, and security of Tabby,
+                users, or the public.
               </p>
             </>
           ),
@@ -148,17 +172,17 @@ export default function PrivacyPage() {
             <>
               <p>
                 You can request that we delete, correct, or export the data
-                associated with your phone number at any time. A contact
-                address for data requests will be listed here before launch;
-                until then, reach out through the &quot;Ask Tabby&quot; chat on
-                the site and we&apos;ll respond within 30 days.
+                associated with your email address. A direct privacy contact
+                channel will be listed here before broader beta access or
+                public launch. Please do not submit sensitive account or legal
+                requests through the AI assistant.
               </p>
               <p>
                 If you are a resident of California, the EU, or the UK, you
-                have additional rights under the CCPA, GDPR, or UK GDPR
-                respectively. The rights above apply equally — you can ask us
-                what we have, ask us to delete it, ask us to stop processing
-                it, or request a copy.
+                may have additional rights under privacy laws such as CCPA,
+                GDPR, or UK GDPR. Those rights may include access, deletion,
+                correction, portability, objection, and limits on certain
+                processing.
               </p>
             </>
           ),
@@ -170,7 +194,8 @@ export default function PrivacyPage() {
             <p>
               Tabby is not directed at children under 13, and we do not
               knowingly collect data from them. If you believe a child has
-              submitted information, contact us and we&apos;ll delete it.
+              submitted information, contact us through the direct privacy
+              channel once it is published and we will delete it.
             </p>
           ),
         },
@@ -180,10 +205,10 @@ export default function PrivacyPage() {
           content: (
             <p>
               We may update this policy as the product develops. Material
-              changes will be flagged on this page and dated above. The
-              version field in the stamp at the top of this document is bumped
-              with every revision so you can tell at a glance whether anything
-              has shifted since your last visit.
+              changes will be flagged on this page and dated above. The version
+              field in the stamp at the top of this document is bumped with
+              every revision so you can tell whether anything has shifted since
+              your last visit.
             </p>
           ),
         },
@@ -192,9 +217,9 @@ export default function PrivacyPage() {
           title: "Contact",
           content: (
             <p>
-              Privacy questions or deletion requests: use the &quot;Ask
-              Tabby&quot; chat on the site. A dedicated privacy email will be
-              listed here at launch.
+              Privacy questions: use the &quot;Ask Tabby&quot; chat for general
+              policy questions only. A dedicated privacy email will be listed
+              here before broader beta access or public launch.
             </p>
           ),
         },

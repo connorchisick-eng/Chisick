@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 import { SmoothScroll } from "@/components/SmoothScroll";
 import { SiteChrome } from "@/components/SiteChrome";
@@ -43,6 +45,8 @@ export default function RootLayout({
           <HashScroller />
           <SiteChrome>{children}</SiteChrome>
           <HelpAgent />
+          <Analytics />
+          <SpeedInsights />
         </PostHogProvider>
       </body>
     </html>

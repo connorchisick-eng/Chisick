@@ -5,6 +5,7 @@ import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { motion, AnimatePresence } from "motion/react";
 import { Arrow } from "@/components/icons";
+import { track } from "@/lib/analytics";
 
 type Period = "monthly" | "annual";
 
@@ -50,7 +51,10 @@ export function Pricing() {
         <div className="flex items-center gap-3 mb-8">
           <div className="inline-flex items-center p-1 rounded-full bg-surface border border-line/10 text-sm font-semibold">
             <button
-              onClick={() => setPeriod("monthly")}
+              onClick={() => {
+                setPeriod("monthly");
+                track("pricing_period_changed", { period: "monthly" });
+              }}
               className={`px-5 py-2 rounded-full transition-colors ${
                 period === "monthly" ? "bg-body text-surface" : "text-body/60 hover:text-body"
               }`}
@@ -59,7 +63,10 @@ export function Pricing() {
               Monthly
             </button>
             <button
-              onClick={() => setPeriod("annual")}
+              onClick={() => {
+                setPeriod("annual");
+                track("pricing_period_changed", { period: "annual" });
+              }}
               className={`relative px-5 py-2 rounded-full transition-colors ${
                 period === "annual" ? "bg-body text-surface" : "text-body/60 hover:text-body"
               }`}
@@ -111,6 +118,15 @@ export function Pricing() {
 
             <Link
               href="/waitlist"
+              onClick={() =>
+                track("cta_clicked", {
+                  cta_name: "get_started",
+                  location: "pricing_free",
+                  target_path: "/waitlist",
+                  plan: "free",
+                  period,
+                })
+              }
               className="mt-10 inline-flex items-center gap-2 px-5 py-3 rounded-full font-medium bg-body text-surface hover:bg-accent hover:text-white transition-colors text-[0.95rem] w-fit"
             >
               Get started
@@ -190,6 +206,15 @@ export function Pricing() {
 
             <Link
               href="/waitlist"
+              onClick={() =>
+                track("cta_clicked", {
+                  cta_name: "get_started",
+                  location: "pricing_pro",
+                  target_path: "/waitlist",
+                  plan: "pro",
+                  period,
+                })
+              }
               className="relative mt-10 inline-flex items-center gap-2 px-5 py-3 rounded-full font-medium bg-accent text-white hover:bg-[rgb(240,108,82)] transition-colors text-[0.95rem] w-fit"
             >
               Get started

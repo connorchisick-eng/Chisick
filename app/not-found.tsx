@@ -306,7 +306,7 @@ function MissingMascot() {
       {/* The mascot — tilted slightly */}
       <div className="relative" style={{ transform: "rotate(-3deg)" }}>
         <Image
-          src="/cat-mascot.png"
+          src="/cat-mascot.webp"
           alt="Tabby mascot holding a 404 receipt"
           width={444}
           height={508}

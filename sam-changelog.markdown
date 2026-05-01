@@ -4,6 +4,26 @@ Hey. Quick rundown of what I changed today, in plain English. No tech jargon.
 
 ---
 
+## Mobile menu close control
+
+On phones, opening the menu (the burger icon in the top-right) used to slide a full-screen panel over everything — but there was **no visible way to close it**. The little "X" button was hiding behind the panel, so tapping it did nothing. Felt broken.
+
+Now:
+
+- The top header **fades away** when the mobile menu opens, so it doesn't fight with the menu.
+- A clean **round "X" button** sits in the top-right corner of the menu itself. Tap it to close.
+- Hitting the **Escape** key on a keyboard also closes it.
+
+Desktop is untouched — the menu only ever appears on mobile.
+
+---
+
+## Vercel Analytics & Speed Insights
+
+Added `@vercel/analytics` and `@vercel/speed-insights` and wired `<Analytics />` and `<SpeedInsights />` in `app/layout.tsx`. After deploy, page views and Web Vitals-style performance show in the Vercel dashboard (give it ~30s; ad blockers can hide the beacons).
+
+---
+
 ## 1. Made a new working copy of the site
 
 I made a new branch called **refresh-sam**. Think of a branch like a sandbox — it's a fresh copy of the website where I can mess with stuff without breaking what's live. Once we're happy with the changes here, we merge them into the real site.
@@ -73,6 +93,35 @@ Now: it's using **GPT-OSS 120B** (an open-source model from OpenAI) routed throu
 I added the new API key to the project so it works.
 
 You don't need to do anything. Same chatbot, same UI, just a smarter cheaper engine.
+
+**How much cheaper, in actual dollars:**
+
+Per million tokens (the unit AI companies bill in):
+
+| Model | Input | Output |
+|---|---|---|
+| **GPT-OSS 120B** (what we use now, mid-tier provider) | $0.15 | $0.60 |
+| Claude Haiku 4.5 | $1.00 | $5.00 |
+| Claude Sonnet 4.6 | $3.00 | $15.00 |
+| Claude Opus 4.6 | $5.00 | $25.00 |
+
+At our typical chatbot mix (~80% input / 20% output), that's roughly:
+- **~87% cheaper** than Claude Haiku
+- **~95% cheaper** than Claude Sonnet
+- **~97% cheaper** than Claude Opus
+
+A real example — **10,000 chats/month**, ~800 in + 200 out tokens each:
+
+| Engine | Monthly cost |
+|---|---|
+| GPT-OSS 120B (now) | **~$2.40** |
+| Claude Haiku 4.5 | ~$18 |
+| Claude Sonnet 4.6 | ~$54 |
+| Claude Opus 4.6 | ~$90 |
+
+So if we'd been on Sonnet, we just went from **~$54/mo → ~$2.40/mo**. At 100k chats/month it's **$540 → $24**. Scales linearly from there.
+
+Pricing references: [Vercel AI Gateway — gpt-oss-120b](https://vercel.com/ai-gateway/models/gpt-oss-120b), [Anthropic API pricing](https://platform.claude.com/docs/en/about-claude/pricing).
 
 ---
 
@@ -349,7 +398,7 @@ Production build passes after a small type-only Motion fix in the demo panel ani
 
 Things I think we should look at next, in priority order:
 
-1. **Track demo events** — right now we don't know how many people get all the way through the live demo, or where they drop off. I can add tracking in like 10 minutes that shows you in PostHog where people abandon.
+1. **Build the PostHog dashboard/funnels** — the tracking is now in the site, so the next step is turning those events into useful PostHog views: waitlist funnel, demo drop-off, CTA performance, chat-assisted conversion, and How It Works engagement.
 2. **Apply the scroll-fade affordance to every scrollable scene** — I added a "there's more content below" gradient utility in the demo polish pass but only wired it into the CSS, not into every individual scene that overflows. Would take an hour to apply across.
 3. **Split the giant demo file** — it's 5,000+ lines in one file and I just added another 600. Not user-facing, just makes it slower for me to work on. Would split into a folder of per-scene files.
 
@@ -362,3 +411,207 @@ If any of that sounds good let me know and I'll knock them out.
 Last thing: the changes above are all sitting on the **refresh-sam** branch. I haven't pushed them to the live site yet. When you've had a chance to click around and confirm everything looks good, give me a thumbs up and I'll ship it.
 
 — Sam
+
+---
+
+## 22. Showcase handoff alignment
+
+- Aligned the cream "No one fronts the bill" handoff slab to the same 1440px container and responsive page padding used by the payments section above it.
+- Removed the separate 88vw / 1280px slab sizing that made the second card sit inset and feel off-center against the surrounding section markers.
+
+---
+
+## 23. Demo transition and indicator polish
+
+- Smoothed the interactive demo narrative swaps with a softer overlapping crossfade/slide instead of the previous wait-state handoff.
+- Added matching blur/slide easing to phone screen changes so text and screen transitions feel more continuous.
+- Moved the Insights Pro marker into the top title area and removed the floating badge row from the visual layout.
+- Cleaned up the StickyStack scroll pill with a lighter final-state treatment, tighter typography, and a drawn arrow chip.
+
+---
+
+## 24. Added the PostHog learning layer
+
+Added analytics in the places that actually answer product questions:
+
+- Waitlist funnel: page view, field starts, submit click, success, failure code, and confirmation view.
+- CTA clicks: nav, hero, final stamp, pricing, footer, demo floating button, and demo replay button.
+- Live demo: scene views, deepest step, completion, abandonment, resets, skip-to-recap, exit confirmation, claims, tips, payment choices, split choices, and card taps.
+- Help agent: open/close, suggested question clicks, message sends, response success, and response failure.
+- Homepage learning: section views, FAQ opens, phone carousel changes, phone lightbox opens/closes, How It Works variant and step progress.
+
+Kept it privacy-safe: no email, phone number, name, or chat message text gets sent to PostHog. The events only use booleans, buckets, IDs, route names, and error codes.
+
+Production build passes.
+
+---
+
+## 25. Killed the "keep scrolling" pill on How it works
+
+You sent me a screenshot — that little floating pill at the bottom of the **How it works** section ("Keep scrolling | STEP 02 / 04") looked generic. Like every other site's scroll hint. Template energy.
+
+Then a second screenshot — the new version was clashing with the **Ask Tabby** chat bubble in the bottom-right corner.
+
+**What I did:**
+
+- **Killed the pill entirely.** No more rounded card with the orange chip. It looked like a tooltip, not part of the design.
+- Replaced it with a small editorial cue in the **bottom-left** corner:
+  - Tiny "↓ keep scrolling" label up top, with a thin animated down-arrow that bounces on a slow loop.
+  - A **huge orange step number** (02, 03, 04…) underneath, with a thin hairline and a small "/04" total — like a magazine page count.
+  - The active number **crossfades** as you scroll between steps. Soft blur, not a hard swap.
+- Anchored it to the **same left edge as the dots column** that runs down the side, so the dots (mid-height) and the counter (bottom) read as one system — small dots tell you visually where you are, the big number spells it out.
+- Bottom-left also keeps it **clear of the Ask Tabby bubble** in the bottom-right.
+- On the **last step**, the orange number shifts to cream and the label flips to "Final step" — you can feel the section is wrapping up without us adding a separate "you're done" badge.
+
+Net: less template, more like an actual designed page. And the chat bubble has its corner back.
+
+---
+
+## 26. Demo navigation and waitlist duplicate tightening
+
+- Added a dedicated `demo_screen_navigated` PostHog event for explicit demo screen jumps, with source/target screens, step indexes, phase, and deepest step.
+- Made the interactive demo easier to scrub: prev/next controls now stay visible beyond mobile, ArrowLeft/ArrowRight move between screens when no modal or form field is active, reset is more visible, and disabled states remain explicit.
+- Kept the stepper's 5px dot visuals while expanding each dot button to a larger focusable/clickable target with tablist/tab semantics wired to `phone-screen`.
+- Replaced random solo-shareable NPC responses with deterministic item-to-diner responses so demo screenshots and recordings are reproducible.
+- Added `PRO_SCREENS` for the demo's Pro badge logic and documented that the demo's split math is display-only until moved to integer cents.
+- Removed waitlist table/index DDL from the signup request path, added `scripts/migrate-waitlist.mjs`, and added `pnpm db:migrate:waitlist`.
+- Made valid duplicate waitlist email submissions a polite no-op through `ON CONFLICT ((lower(email))) DO NOTHING`; the API response shape stays `{ ok: true }`.
+- Added the TypeScript `ignoreDeprecations` setting needed for `pnpm exec tsc --noEmit` to pass with the installed compiler.
+
+Verification: `pnpm build` and `pnpm exec tsc --noEmit` both pass. The live waitlist migration still needs to be run against the database before deploying the API change.
+
+---
+
+## 27. Hero first-load motion cleanup
+
+- Shortened the claw headline reveal so the opening accent resolves quickly instead of sitting over the page while the rest of the hero waits.
+- Brought the hero subcopy and primary CTA into the same entrance beat as the headline, with shorter transform/opacity animation and reduced-motion fallback.
+- Hid the phone carousel track until it has measured and centered the starting phone, preventing the visible "slide into place" jump on first render.
+- Cleaned up related dev-runtime noise from the first page load: removed a stale GSAP target in the flip statement, made nav color animation use concrete RGBA values, and fixed numeric icon image dimensions.
+
+Verification: `pnpm exec tsc --noEmit` and `pnpm build` both pass.
+
+---
+
+## 29. Unified DevPanel and dev-only A/B controls
+
+- Added `components/DevPanel.tsx`: a single floating dev surface mounted in `app/layout.tsx` (gated to `NODE_ENV=development` / `NEXT_PUBLIC_DEV_MODE=true`) that bundles every local A/B knob into one organized drawer.
+- Replaces the per-component `DevToggle` pills that used to stack at bottom-left (one for HowItWorks swipe/sticky, one for Footer v1/v2) and look messy on mobile.
+- Drawer sections: "How it works" (Auto / Swipe / Sticky), "Footer" (Auto / V1 / V2). Header has Reset and × close buttons. Esc closes. Collapsed pill shows current state ("DEV · auto · auto") with a pulse dot.
+- Mobile-friendly: 86vw max width, safe-area-inset bottom padding, z-index below HelpAgent so they don't fight for the same corner.
+- Clicking "Auto" strips both the localStorage key AND the `?hiw=` / `?footer=` URL query param before reloading, so resolution truly falls back to the PostHog flag / default (the resolvers re-pin from the URL on every load).
+- Stripped the inline `DevToggle` JSX from `components/Footer.tsx` and `components/sections/HowItWorks.tsx`. Resolver logic, storage keys, and PostHog flag wiring untouched.
+
+---
+
+## 30. Footer mobile rewrite (V1 polish + V2 rebuild)
+
+- Rebuilt `components/FooterV2.tsx` for mobile robustness: the "tabby tabby." edge-bleeding wordmark with `whitespace-nowrap` and `clamp(7rem, 26vw, 26rem)` was overflowing the viewport on phones; replaced with a single "tabby." word.
+- Removed the brittle `xPercent` parallax on the wordmark (barely visible, contributed to the overflow).
+- Forced the link grid to `grid-cols-3` on every breakpoint (was `grid-cols-2 md:grid-cols-3`, which left an orphan third column on phones).
+- CTA cluster restacks to button-then-platform-badges on mobile so the row never wraps mid-element.
+- Tightened ambient glow size at narrow viewports, reduced top padding on phones, tuned type sizes and line spacing for sub-`sm` widths.
+- Same grid + type/spacing tightening pass on `components/FooterV1.tsx` for consistency.
+- **Wordmark glyph clipping (follow-up):** wrapper switched from `overflow-hidden` to `overflow-x-clip` so horizontal bleed still clips while the descender on "y" and the period render fully. Dropped the `translateY(8%)` push that was driving the glyph into the marquee. Loosened `leading-[0.82]` → `leading-[0.95]` so the line-box itself isn't cropping the descender, plus `pb-[0.18em]` breathing room. Marquee margin `-mt-3 lg:-mt-8` → `mt-2 lg:mt-4` so it sits cleanly below the full word.
+
+---
+
+## 31. FlipStatement reframed as "The Principle" (with width-locked WordFlip)
+
+- Rebuilt `components/sections/FlipStatement.tsx` so the headline anchors the page philosophy with editorial chrome instead of floating loose on cream.
+- Added a chapter mark eyebrow (`§ — THE PRINCIPLE`) with hairline rules left and right, matching the Showcase chapter-mark family.
+- Stamped a giant low-opacity italic open-quote glyph behind the headline as the "this is a pull-quote" frame.
+- Wrapped the headline in top + bottom hairlines (receipt-slip motif) and added very faint vertical ledger pinstripes behind the section, masked away from the headline so they don't fight the type.
+- Footer row: pair counter (`01/06` plus six pips, active widens) on the left, italic `— the Tabby principle` signature on the right.
+- Added a hand-drawn strikethrough that re-draws across the luxury word every flip — "we crossed it off your tab." Wavy SVG stroke with `pathLength` 0→1 over 0.5s, delayed ~0.56s so it lands as the new word fully fades in. Path `opacity` is gated on the same delay so a `strokeLinecap="round"` cap dot doesn't render during the pre-draw window (looked like a typo otherwise).
+- **Width-locked WordFlip (powers it):** rebuilt `components/WordFlip.tsx` so the slot width locks to the widest possible word — surrounding sentence never shifts when "fries" → "dry-aged" or vice versa. Implementation: `inline-grid` with one invisible ghost per word stacked into the same `col-start-1 row-start-1` cell; cell sizes to the widest ghost. Ghosts use both `visibility: hidden` and `color: transparent` so no glyph leaks through inherited italic / accent styling.
+- Switched `AnimatePresence` from `mode="popLayout"` to `mode="wait"` and dropped the y-offset transition — with locked width the popLayout overlap looked glaring (two words in the same cell at slightly different y); now only one word is on-screen at any moment with a clean blur+fade in place.
+- Visible word is left-aligned in the locked cell so it sits flush against the preceding text — no big gap between "their" and the active word.
+- New `suffix` prop on WordFlip: trailing element rendered immediately after the active word inside the locked cell (counted in ghost width). Used for the accent period after "water" / "salad" so it hugs the word instead of floating at the cell's right edge.
+- New `renderOverlay` prop on WordFlip: child of the active word's `motion.span`, sized to the visible glyph rect. Used for the strike-through so it matches the actual word width (not the locked cell width). Removed the now-unnecessary inner `AnimatePresence` from the Strike — parent `motion.span` mount/unmount handles its lifecycle.
+
+---
+
+## 32. StickyStack mobile + Showcase Handoff spacing
+
+- Reverted the StickyStack mobile fallback to mirror the desktop per-frame composition (large `StepMeta` with `01/02/03/04` + accent eyebrow + hairline rule, headline, body, phone) stacked vertically. No GSAP pin, no scroll-driven swap — just natural page scroll. Desktop pinned-scroll animation untouched.
+- Bumped the Showcase § 02 "Handoff" block top padding from `pt-2` to `pt-12 sm:pt-14` (kept `lg:pt-6` desktop unchanged) and added a touch more space below the chapter mark, so the `§ 02 — THE HANDOFF` mark has real breathing room above the cream slab on phones instead of being crushed against the tail of the Payments list.
+- **Sticky scroll pacing (follow-up):** desktop pinned scroll was dragging — each step ate ~1 viewport of scroll + 0.5vh dwell (~4.5vh total for 4 steps). Tightened to `perStep = 0.55` + `dwell = 0.25` (~2.45vh total — almost half). Scrub eased from `1.0` → `0.5` and the step-commit dead-zone tightened from 12% → 8% so steps land sooner. AnimatePresence swap durations on the phone (0.7s/0.55s) and copy column (0.65s/0.5s) shaved to ~0.42s/0.32s and 0.4s/0.28s respectively, so per-step content swaps land cleanly inside the shorter slot instead of getting cut off mid-animation by a quick scroll past two steps.
+
+---
+ 
+## 33. Demo mobile conversion pass
+
+- Reframed the first-run demo intro from "best on desktop" to touch-first guidance so mobile/iPad users are not warned away from the experience.
+- Split CTA behavior by viewport: desktop/tablet keep the floating recap + waitlist cluster, while phones get a fixed bottom control bar with progress, previous, next, skip-to-recap, and join actions.
+- Added mobile bottom spacing on `/demo` so the fixed conversion bar does not cover the phone walkthrough.
+- Added `demo_mobile_bar` waitlist tracking and a separate mobile skip-to-recap action label for cleaner funnel analysis.
+
+Verification: `pnpm exec tsc --noEmit` and `pnpm build` both pass.
+
+---
+
+## 34. Codebase hygiene pass
+
+- Pinned package versions instead of leaving the app on `latest`, regenerated `pnpm-lock.yaml`, removed the stray `package-lock.json`, and changed Vercel to install/build with pnpm so local and deploy installs resolve the same dependency graph.
+- Repaired the broken `pnpm lint` script by making it run the same TypeScript no-emit gate as `pnpm typecheck`; `next lint` is no longer valid in this Next 16 setup without adding a separate ESLint config.
+- Added shared edge-safe request helpers in `lib/server-security.ts` and wired `/api/chat` + `/api/waitlist` through them so origin checks, JSON/content-length checks, client IP lookup, and in-memory rate limiting stop being duplicated.
+- Added typed analytics event scaffolding in `lib/analytics.ts` while keeping the existing `track(event, props)` API backward-compatible.
+- Generated WebP versions of exported phone screenshots and the mascot, then routed phone/hero/not-found/mascot display paths to WebP assets. The PNG originals stay in `public` as source assets.
+- Added `.cursor` to `.gitignore` so local editor state does not keep showing up as an untracked project file.
+- Deferred the giant `InteractiveDemo.tsx` split: that is still the right next cleanup, but it should happen on a separate clean branch because the current branch already has a large dirty worktree.
+
+Verification: `pnpm exec tsc --noEmit`, `pnpm lint`, and `pnpm build` all pass.
+
+---
+
+## 35. Legal pages reality pass
+
+- Rewrote `/privacy`, `/terms`, and `/security` around the current pre-launch website instead of implying the full app/payment stack is live.
+- Corrected waitlist collection language: email is required; name and phone are optional, with partial phone entries dropped by the primary waitlist form.
+- Updated privacy copy to include analytics, browser metadata, waitlist storage, and AI assistant processing without naming internal vendors or routing details.
+- Tightened terms so screenshots, demo flows, pricing, launch timing, payment methods, escrow, and virtual card behavior are treated as product direction, not binding promises.
+- Updated security copy to match implemented controls at a public-facing level: HTTPS, browser protections, request validation, abuse prevention, private credentials, and no payment-data collection on the site.
+- Removed over-specific claims we cannot prove from the codebase today, including phone-required signup, IP allowlist wording, biometric/phone-verification commitments, and guaranteed request response timing.
+- Follow-up: redacted vendor names, database engine names, AI routing details, and low-level API defense specifics from the public legal pages so the docs do not reveal more system detail than users need.
+- Follow-up: softened the security page's assistant section so it no longer references internal prompt structure, model credentials, or low-level AI routing language.
+
+Verification: `pnpm exec tsc --noEmit` passes.
+
+---
+
+## 36. Made the sticky/footer refresh the primary site
+
+- Updated the local Git remote to `https://github.com/Chisick-Enterprises/tabby-landing.git`; the repo's default branch is `main`.
+- Removed the temporary How-it-works A/B resolver, query/localStorage overrides, PostHog variant flag lookup, and old swipe implementation.
+- Made the sticky How-it-works section the direct homepage path.
+- Removed the footer A/B resolver and old footer implementation; the editorial footer v2 is now the direct site footer.
+- Removed the global development panel from the layout and deleted the now-unused `DevPanel`, `FooterV1`, and `Swiper` files.
+- Updated stale comments/docs so this branch is ready to merge toward the primary `main` branch without dev-only experiment controls.
+
+Verification: `pnpm exec tsc --noEmit` and `pnpm build` both pass.
+
+---
+
+## 37. Cleared old Vercel env vars
+
+- Linked this checkout to Vercel project `tabby-app/tabby-site`.
+- Removed the old `ANTHROPIC_API_KEY` from Preview and Production.
+- Removed the old PostHog variables: `NEXT_PUBLIC_tabby_POSTHOG_PROJECT_TOKEN`, `NEXT_PUBLIC_tabby_POSTHOG_HOST`, `NEXT_PUBLIC_POSTHOG_HOST`, and `NEXT_PUBLIC_POSTHOG_KEY`.
+- Verified `vercel env ls --scope tabby-app` now only shows the database-related env vars.
+
+---
+
+## 38. Wired PostHog product + LLM analytics for production
+
+- Updated browser analytics to read the new PostHog project token env names, prioritizing `NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN` and still accepting `NEXT_PUBLIC_POSTHOG_TOKEN` / old local fallback.
+- Kept the `/ingest` reverse proxy path for browser events while allowing Vercel's PostHog host env to drive production.
+- Added PostHog LLM observability through `@posthog/ai` and OpenTelemetry instrumentation for Node runtime.
+- Switched `/api/chat` from Edge to Node runtime so the PostHog OpenTelemetry span processor can run.
+- Added Vercel AI SDK `experimental_telemetry` metadata on the help-agent `streamText` call, including PostHog distinct/session IDs from the browser when available.
+- Installed and pinned `@posthog/ai`, `@opentelemetry/sdk-node`, and `@opentelemetry/resources`.
+- Verified Vercel now has fresh `NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN` and `NEXT_PUBLIC_POSTHOG_HOST` values for Production, Preview, and Development.
+
+Verification: `pnpm exec tsc --noEmit` and `pnpm build` both pass.
+
+---

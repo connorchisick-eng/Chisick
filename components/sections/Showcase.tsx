@@ -219,15 +219,18 @@ export function Showcase() {
 
       {/* ═══════════════ § 02 — THE HANDOFF ═══════════════
           Cream slab. Hero claim + tight 3-step flow. All copy compressed
-          to fragments — heading carries the punch, nodes are noun phrases. */}
-      <div data-reverse="true" className="sc-block relative w-full pt-2 lg:pt-6 pb-20 lg:pb-28">
-        <div className="mx-auto max-w-[1440px] px-6 lg:px-10 pb-5 lg:pb-8">
+          to fragments — heading carries the punch, nodes are noun phrases.
+          Mobile gets noticeably more top padding so the chapter mark has
+          breathing room above the cream card and isn't crushed against the
+          tail of the Payments list. */}
+      <div data-reverse="true" className="sc-block relative w-full pt-12 sm:pt-14 lg:pt-6 pb-20 lg:pb-28">
+        <div className="mx-auto max-w-[1440px] px-6 lg:px-10 pb-7 sm:pb-6 lg:pb-8">
           <ChapterMark num="02" label="The handoff" tone="dark" />
         </div>
 
-        <div className="sc-image relative w-full">
+        <div className="sc-image relative mx-auto max-w-[1440px] px-6 lg:px-10">
           <div
-            className="sc-full-image relative mx-auto w-[88vw] max-w-[1280px] rounded-[1.4rem] overflow-hidden bg-cream"
+            className="sc-full-image relative w-full rounded-[1.4rem] overflow-hidden bg-cream"
             style={{
               backgroundImage:
                 "radial-gradient(circle at 85% 110%, rgba(255,124,97,0.28), transparent 55%), radial-gradient(circle at 10% -20%, rgba(255,124,97,0.22), transparent 55%)",
