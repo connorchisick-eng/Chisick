@@ -20,11 +20,18 @@ export function HashScroller() {
       if (!hash) return;
       const el = document.getElementById(hash);
       if (!el) return;
+      // Pinned sections (e.g. #how-it-works) trigger their
+      // ScrollTrigger pin at `top top` — landing them 120px below the nav
+      // means the pin hasn't engaged yet and the user has to scroll to
+      // activate the animation. For these we want section-top at y=0 and
+      // let the inverted nav overlap.
+      const pinned = el.hasAttribute("data-nav-invert");
+      const offset = pinned ? 0 : -120;
       const lenis = (window as unknown as { __lenis?: LenisLike }).__lenis;
       if (lenis) {
-        lenis.scrollTo(el, { offset: -80 });
+        lenis.scrollTo(el, { offset });
       } else {
-        const top = el.getBoundingClientRect().top + window.scrollY - 80;
+        const top = el.getBoundingClientRect().top + window.scrollY + offset;
         window.scrollTo({ top, behavior: "smooth" });
       }
     };

@@ -2,13 +2,12 @@
 import { useEffect, useRef, useState } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { SplitText } from "@/components/SplitText";
 import { track } from "@/lib/analytics";
 
 const ITEMS = [
   {
     q: "How does Tabby split the bill?",
-    a: "One person scans the receipt. Everyone on the tab claims the items they ordered. Shared plates can be split evenly or by custom amounts among whoever claims them. Each person selects a tip, reviews their total, and pays their share. All funds are held in escrow until everyone has paid. Once the full amount is collected, a one-time virtual card appears on the tab initiator's phone. They tap it to the POS terminal and pay the restaurant in one clean transaction. No one fronts the bill. No chasing people on Venmo. Done before the server comes back.",
+    a: "One person scans the receipt. Everyone on the tab claims the items they ordered. Shared plates can be split evenly or by custom amounts among whoever claims them. Each person selects a tip, reviews their total, and pays their share. All funds are held in escrow until everyone has paid. Once the full amount is collected, a one-time virtual card appears on the tab initiator's phone. They tap it to the POS terminal and pay the restaurant in one clean transaction. No one fronts the bill. No chasing payments after the meal. Done before the server comes back.",
   },
   {
     q: "Do all my friends need the app?",
@@ -24,11 +23,11 @@ const ITEMS = [
   },
   {
     q: "How much does Tabby cost?",
-    a: "Tabby is free to download and free to split. The Free tier covers 5 receipt scans a month — enough for the casual night out. Pro ($1.99/mo or $18.99/yr) unlocks unlimited scans and SmartReceipts, our AI-powered spending insights. Everyone on the waitlist gets Pro free for the duration of the closed beta.",
+    a: "Tabby charges a flat 1.5% fee per settlement — no per-person fees, no hidden charges. You only pay when a tab is settled. Join the waitlist and you'll get early access to every feature when we launch.",
   },
   {
     q: "Is Tabby available outside the US?",
-    a: "Not yet. Tabby is launching first in the United States, where our payment infrastructure is fully approved. We're actively working on bringing Tabby to other countries — each market requires regulatory approval, local banking partnerships, and support for regional payment methods, so it takes time to get right. Join the waitlist and we'll let you know the moment Tabby lands in your country.",
+    a: "Not yet. We're launching in the United States first so we can nail the experience with one banking infrastructure. International rollout is planned for later — join the waitlist and we'll let you know the moment Tabby lands in your country.",
   },
 ];
 
@@ -71,20 +70,11 @@ export function FAQ() {
   }, [open]);
 
   return (
-    <section
-      id="faq"
-      data-section="faq"
-      ref={ref}
-      className="relative bg-canvas"
-      aria-labelledby="faq-heading"
-    >
+    <section id="faq" ref={ref} className="relative bg-surface">
       <div className="mx-auto max-w-[980px] px-6 lg:px-10 pt-24 lg:pt-32 pb-24 lg:pb-32">
         {/* Section header — large orange display heading */}
         <div className="text-center">
-          <h2
-            id="faq-heading"
-            className="font-grotesk font-bold italic text-accent text-display leading-[0.95]"
-          >
+          <h2 className="font-grotesk font-bold italic text-accent text-display leading-[0.95]">
             FAQs.
           </h2>
         </div>
@@ -101,31 +91,27 @@ export function FAQ() {
                 <button
                   className="acc-head"
                   onClick={() => {
-                    const nextOpen = !isOpen;
-                    setOpen(isOpen ? null : i);
-                    track("faq_item_toggled", {
-                      index: i,
-                      is_open: nextOpen,
-                      question_preview: item.q.slice(0, 40),
-                    });
+                    const nextOpen = isOpen ? null : i;
+                    setOpen(nextOpen);
+                    if (nextOpen !== null) {
+                      track("faq_opened", {
+                        question_id: `faq_${i + 1}`,
+                        question_index: i,
+                      });
+                    }
                   }}
                   aria-expanded={isOpen}
-                  aria-controls={`faq-panel-${i}`}
-                  id={`faq-trigger-${i}`}
                 >
                   <span className="flex items-start gap-5">
-                    <span className="text-xs text-fg/40 font-bold tracking-[0.22em] pt-2 hidden sm:inline">
+                    <span className="text-xs text-body/40 font-bold tracking-[0.22em] pt-2 hidden sm:inline">
                       0{i + 1}
                     </span>
                     <span>{item.q}</span>
                   </span>
-                  <span className="acc-icon" aria-hidden />
+                  <span className="acc-icon" />
                 </button>
                 <div
                   className="acc-body"
-                  id={`faq-panel-${i}`}
-                  role="region"
-                  aria-labelledby={`faq-trigger-${i}`}
                   ref={(el) => {
                     bodyRefs.current[i] = el;
                   }}
@@ -142,13 +128,13 @@ export function FAQ() {
         {/* Still have questions? */}
         <div className="mt-16 lg:mt-20 text-center">
           <div className="inline-flex flex-col items-center gap-3">
-            <span className="eyebrow text-fg/40">Can&apos;t find it?</span>
-            <p className="font-grotesk font-bold text-fg text-3xl md:text-4xl leading-[1.1] tracking-[-0.02em] max-w-md">
+            <span className="eyebrow text-body/40">Can't find it?</span>
+            <p className="font-grotesk font-bold text-body text-3xl md:text-4xl leading-[1.1] tracking-[-0.02em] max-w-md">
               Still have questions?
             </p>
-            <p className="text-fg/60 text-base max-w-sm">
+            <p className="text-body/60 text-base max-w-sm">
               Tap{" "}
-              <span className="font-semibold text-fg">Ask Tabby</span> in the
+              <span className="font-semibold text-body">Ask Tabby</span> in the
               corner — our AI answers in seconds.
             </p>
           </div>

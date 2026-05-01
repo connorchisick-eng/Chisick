@@ -62,7 +62,7 @@ export function IntroOverlay() {
   return (
     <div
       ref={ref}
-      className="fixed inset-0 z-100 bg-accent text-white overflow-hidden"
+      className="fixed inset-0 z-[100] bg-accent text-white overflow-hidden"
       aria-hidden
     >
       <div className="noise opacity-20" />
@@ -74,7 +74,7 @@ export function IntroOverlay() {
           </span>
           <span className="intro-meta hidden sm:flex gap-8">
             <span>est. 2026</span>
-            <span>No venmo</span>
+            <span>No IOUs</span>
           </span>
         </div>
 

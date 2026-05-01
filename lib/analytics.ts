@@ -1,117 +1,185 @@
-import type { PostHog } from "posthog-js";
+"use client";
 
-/**
- * Typed analytics wrapper. Every component imports `track` / `identify`
- * from here; nothing imports `posthog-js` directly. That keeps event
- * names strongly-typed, gives us one place to no-op when the key isn't
- * set, and makes swapping/augmenting the sink (Sentry, Segment, ...)
- * a one-file change later.
- */
+import posthog from "posthog-js";
+import { useEffect, useRef } from "react";
 
-export type AnalyticsEvent =
-  // Waitlist funnel
-  | "waitlist_form_viewed"
-  | "waitlist_form_started"
-  | "waitlist_form_field_blurred"
-  | "waitlist_form_submitted"
-  | "waitlist_form_succeeded"
-  | "waitlist_form_failed"
-  // Help agent (AI chat)
-  | "help_agent_opened"
-  | "help_agent_closed"
-  | "help_agent_suggestion_clicked"
-  | "help_agent_message_sent"
-  | "help_agent_response_streamed"
-  | "help_agent_errored"
-  // Hero carousel
-  | "hero_carousel_advanced"
-  | "hero_carousel_wrapped"
-  | "hero_carousel_paused"
-  | "hero_carousel_resumed"
-  // Nav / theme / scroll
-  | "nav_link_clicked"
-  | "nav_logo_clicked"
-  | "mobile_menu_toggled"
-  | "theme_toggled"
-  | "scroll_depth_reached"
-  // Sections
-  | "section_viewed"
-  // Pricing + FAQ
-  | "pricing_period_toggled"
-  | "pricing_cta_clicked"
-  | "faq_item_toggled"
-  // Primary CTA
-  | "cta_join_waitlist_clicked"
-  | "footer_link_clicked";
+type AnalyticsProps = Record<string, string | number | boolean | null | undefined>;
+type AnalyticsEventProps = {
+  cta_clicked: AnalyticsProps & {
+    cta_name: string;
+    location: string;
+    target_path?: string;
+  };
+  demo_action: AnalyticsProps & { action_type: string };
+  demo_scene_viewed: AnalyticsProps & { demo_screen: string };
+  demo_screen_navigated: AnalyticsProps & {
+    from_screen: string;
+    target_screen: string;
+  };
+  demo_started: AnalyticsProps;
+  demo_abandoned: AnalyticsProps;
+  demo_completed: AnalyticsProps;
+  demo_reset: AnalyticsProps;
+  faq_opened: AnalyticsProps & { question_id: string };
+  help_agent_opened: AnalyticsProps;
+  help_agent_closed: AnalyticsProps;
+  help_message_sent: AnalyticsProps;
+  help_response_completed: AnalyticsProps;
+  help_response_failed: AnalyticsProps;
+  help_suggestion_clicked: AnalyticsProps;
+  hero_phone_changed: AnalyticsProps;
+  hero_phone_lightbox_opened: AnalyticsProps;
+  hero_phone_lightbox_closed: AnalyticsProps;
+  how_it_works_completed: AnalyticsProps;
+  how_it_works_phone_swapped: AnalyticsProps;
+  how_it_works_step_viewed: AnalyticsProps;
+  nav_mobile_menu_toggled: AnalyticsProps & { open: boolean };
+  pricing_period_changed: AnalyticsProps & { period: string };
+  section_viewed: AnalyticsProps & { section_name: string };
+  waitlist_confirmation_viewed: AnalyticsProps;
+  waitlist_field_started: AnalyticsProps;
+  waitlist_submit_clicked: AnalyticsProps;
+  waitlist_submit_failed: AnalyticsProps;
+  waitlist_submitted: AnalyticsProps;
+  waitlist_viewed: AnalyticsProps;
+};
 
-type Props = Record<string, unknown>;
+export type AnalyticsEventName = keyof AnalyticsEventProps;
 
-function getPosthog(): PostHog | null {
-  if (typeof window === "undefined") return null;
-  const w = window as unknown as { posthog?: PostHog };
-  return w.posthog ?? null;
+const EVENT_VERSION = 1;
+const LANDING_KEY = "tabby:analytics:landing";
+const WAITLIST_SOURCE_KEY = "tabby:analytics:waitlist-source";
+const UTM_KEYS = ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content"] as const;
+
+function viewportBucket() {
+  if (typeof window === "undefined") return "unknown";
+  const width = window.innerWidth;
+  if (width < 640) return "mobile";
+  if (width < 1024) return "tablet";
+  return "desktop";
 }
 
-/**
- * Safe no-op when PostHog isn't loaded yet (SSR, ad-blocker, missing
- * key). Consumers never need to null-check.
- */
-export function track(event: AnalyticsEvent, props?: Props): void {
-  const ph = getPosthog();
-  if (!ph) return;
+function referrerDomain() {
+  if (typeof document === "undefined" || !document.referrer) return "";
   try {
-    ph.capture(event, props);
+    return new URL(document.referrer).hostname;
   } catch {
-    // Swallow — analytics must never break the product.
+    return "";
   }
 }
 
-export function identify(distinctId: string, props?: Props): void {
-  const ph = getPosthog();
-  if (!ph) return;
+function readLandingPath() {
+  if (typeof window === "undefined") return "";
   try {
-    ph.identify(distinctId, props);
+    const existing = window.sessionStorage.getItem(LANDING_KEY);
+    if (existing) return existing;
+    const landing = `${window.location.pathname}${window.location.search}`;
+    window.sessionStorage.setItem(LANDING_KEY, landing);
+    return landing;
   } catch {
-    /* noop */
+    return `${window.location.pathname}${window.location.search}`;
   }
 }
 
-export function reset(): void {
-  const ph = getPosthog();
-  if (!ph) return;
+function utmProps() {
+  if (typeof window === "undefined") return {};
+  const params = new URLSearchParams(window.location.search);
+  return Object.fromEntries(
+    UTM_KEYS.map((key) => [key, params.get(key) || undefined]),
+  );
+}
+
+function cleanProps(props: AnalyticsProps) {
+  return Object.fromEntries(
+    Object.entries(props).filter(([, value]) => value !== undefined),
+  );
+}
+
+export function initAnalyticsSession() {
+  if (typeof window === "undefined") return;
+  const props = cleanProps({
+    landing_path: readLandingPath(),
+    referrer_domain: referrerDomain() || undefined,
+    viewport_bucket: viewportBucket(),
+    ...utmProps(),
+  });
   try {
-    ph.reset();
+    posthog.register_once(props);
+  } catch {}
+}
+
+export function track(event: string, props: AnalyticsProps = {}) {
+  try {
+    if (
+      event === "cta_clicked" &&
+      typeof window !== "undefined" &&
+      String(props.target_path || "").startsWith("/waitlist")
+    ) {
+      window.sessionStorage.setItem(
+        WAITLIST_SOURCE_KEY,
+        String(props.location || props.cta_name || "unknown"),
+      );
+    }
+    posthog.capture(
+      event,
+      cleanProps({
+        event_version: EVENT_VERSION,
+        current_path:
+          typeof window === "undefined"
+            ? undefined
+            : `${window.location.pathname}${window.location.search}`,
+        viewport_bucket: viewportBucket(),
+        ...props,
+      }),
+    );
+  } catch {}
+}
+
+export function trackEvent<T extends AnalyticsEventName>(
+  event: T,
+  props: AnalyticsEventProps[T],
+) {
+  track(event, props);
+}
+
+export function waitlistSource() {
+  if (typeof window === "undefined") return undefined;
+  try {
+    return window.sessionStorage.getItem(WAITLIST_SOURCE_KEY) || undefined;
   } catch {
-    /* noop */
+    return undefined;
   }
 }
 
-export function getDistinctId(): string | null {
-  const ph = getPosthog();
-  if (!ph) return null;
-  try {
-    return ph.get_distinct_id() ?? null;
-  } catch {
-    return null;
-  }
+export function lengthBucket(value: string) {
+  const length = value.trim().length;
+  if (length === 0) return "empty";
+  if (length < 20) return "short";
+  if (length < 80) return "medium";
+  return "long";
 }
 
-/**
- * Returns a stable SHA-256 hex digest of the input. Used so a person's
- * raw phone number never becomes their PostHog distinct_id; we identify
- * on `sha256(e164_phone)` instead.
- */
-export async function sha256Hex(input: string): Promise<string> {
-  const bytes = new TextEncoder().encode(input);
-  const digest = await crypto.subtle.digest("SHA-256", bytes);
-  return Array.from(new Uint8Array(digest))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
+export function useSectionViewed<T extends HTMLElement = HTMLElement>(sectionName: string) {
+  const ref = useRef<T | null>(null);
+  const seen = useRef(false);
 
-/** Rough E.164 normalizer: keep digits + optional leading +, nothing else. */
-export function normalizePhoneE164(raw: string): string {
-  const plus = raw.trim().startsWith("+");
-  const digits = raw.replace(/\D/g, "");
-  return plus ? `+${digits}` : digits;
+  useEffect(() => {
+    const node = ref.current;
+    if (!node || seen.current || typeof IntersectionObserver === "undefined") return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.isIntersecting || seen.current) return;
+        seen.current = true;
+        track("section_viewed", { section_name: sectionName });
+        observer.disconnect();
+      },
+      { threshold: 0.35 },
+    );
+
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [sectionName]);
+
+  return ref;
 }

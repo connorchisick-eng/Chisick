@@ -1,18 +1,9 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { gsap } from "gsap";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "motion/react";
 import { Arrow } from "./icons";
-import {
-  track,
-  identify,
-  sha256Hex,
-  getDistinctId,
-} from "@/lib/analytics";
-
-// Intentionally loose: matches common typos folks still want to hear back
-// from. Real deliverability is validated at send-time by the ESP.
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+import { track, waitlistSource } from "@/lib/analytics";
 
 /**
  * The waitlist receipt IS the signup form. The upper half is the stylized
@@ -40,7 +31,6 @@ function formatPhone(raw: string) {
 export function WaitlistReceipt() {
   const rootRef = useRef<HTMLDivElement>(null);
   const paperRef = useRef<HTMLDivElement>(null);
-  const stampRef = useRef<HTMLDivElement>(null);
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -49,108 +39,68 @@ export function WaitlistReceipt() {
     "idle" | "loading" | "done" | "error"
   >("idle");
   const [signing, setSigning] = useState(false);
-  // Track once: waitlist_form_viewed (mount) and waitlist_form_started
-  // (first keystroke anywhere). These latches live outside state so they
-  // don't retrigger on re-renders.
-  const startedRef = useRef(false);
-  const viewedRef = useRef(false);
+  const startedFields = useRef(new Set<string>());
+  const confirmationTracked = useRef(false);
 
-  const digits = phone.replace(/\D/g, "").length;
-  const emailTrimmed = email.trim();
-  const emailValid = EMAIL_RE.test(emailTrimmed);
-  // Phone is optional: empty is fine, but if the user started typing
-  // we still hold them to the same 10-digit floor as before.
-  const phoneOk = phone.trim() === "" || digits >= 10;
-  const valid = emailValid && phoneOk;
-  const emailDomain = emailValid ? emailTrimmed.split("@")[1] : null;
-
-  // Fire `waitlist_form_viewed` once on first visible render — the form
-  // is above the fold on /waitlist, so mount is equivalent to view.
-  useEffect(() => {
-    if (viewedRef.current) return;
-    viewedRef.current = true;
-    track("waitlist_form_viewed", { surface: "receipt" });
-  }, []);
-
-  const notifyStarted = () => {
-    if (startedRef.current) return;
-    startedRef.current = true;
-    track("waitlist_form_started", { surface: "receipt" });
-  };
+  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+  const phoneDigits = phone.replace(/\D/g, "").length;
+  const phoneComplete = phoneDigits >= 10;
+  // Phone is optional — the button's enabled state tracks email only.
+  // A partial phone entry gets dropped at submit time instead of blocking.
+  const valid = emailValid;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!valid || status === "loading") return;
-    setStatus("loading");
-    track("waitlist_form_submitted", {
-      surface: "receipt",
-      has_name: name.trim().length > 0,
-      has_email: emailValid,
-      email_domain: emailDomain,
-      has_phone: phone.trim().length > 0,
-      phone_digits_len: digits,
+    track("waitlist_submit_clicked", {
+      has_name: Boolean(name.trim()),
+      has_phone: phoneComplete,
+      email_valid: emailValid,
+      phone_complete: phoneComplete,
+      source_cta: waitlistSource(),
     });
-    const startedAt = performance.now();
+    setStatus("loading");
+    const phoneToSend = phoneComplete ? phone : "";
     try {
-      const distinctId = getDistinctId();
       const res = await fetch("/api/waitlist", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(distinctId ? { "x-posthog-distinct-id": distinctId } : {}),
-        },
-        body: JSON.stringify({ name, email: emailTrimmed, phone }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, phone: phoneToSend }),
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      // Play signature animation first, then swap to the confirmation block
-      // so the user watches the receipt get signed before the stamp hits.
-      setSigning(true);
-      setTimeout(() => setStatus("done"), 1800);
-      setTimeout(() => setSigning(false), 3200);
-
-      const duration = Math.round(performance.now() - startedAt);
-      track("waitlist_form_succeeded", {
-        surface: "receipt",
-        duration_ms: duration,
-        has_name: name.trim().length > 0,
-        has_email: emailValid,
-        email_domain: emailDomain,
-        has_phone: phone.trim().length > 0,
-      });
-
-      // Identify on SUCCESS only — fold the anonymous session into a
-      // stable, hashed distinct id derived from the email. Email is
-      // the one guaranteed field post-TestFlight flip; we never send
-      // the raw address as the id.
-      try {
-        const hashed = await sha256Hex(emailTrimmed.toLowerCase());
-        identify(`ph_${hashed.slice(0, 40)}`, {
-          first_name: name.trim().split(/\s+/)[0] || undefined,
-          email_domain: emailDomain,
-          has_phone: phone.trim().length > 0,
-          phone_digits_len: phone.trim().length > 0 ? digits : undefined,
-          waitlist_joined_at: new Date().toISOString(),
+      if (!res.ok) {
+        let errorCode = "unknown";
+        try {
+          const body = (await res.json()) as { error?: string };
+          errorCode = body.error || errorCode;
+        } catch {}
+        track("waitlist_submit_failed", {
+          error_code: errorCode,
+          http_status: res.status,
+          source_cta: waitlistSource(),
         });
-      } catch {
-        /* identify is best-effort */
+        throw new Error(`HTTP ${res.status}`);
       }
+      track("waitlist_submitted", {
+        has_name: Boolean(name.trim()),
+        has_phone: phoneComplete,
+        source_cta: waitlistSource(),
+      });
+      // Let the signature fully draw, then crossfade form → confirmation
+      // while the ink dissolves in the same beat — no visible gap.
+      setSigning(true);
+      setTimeout(() => {
+        setStatus("done");
+        setSigning(false);
+      }, 2000);
     } catch (err) {
       console.error("[waitlist] submission failed", err);
       setStatus("error");
-      track("waitlist_form_failed", {
-        surface: "receipt",
-        duration_ms: Math.round(performance.now() - startedAt),
-        error_type: err instanceof Error ? err.name : "unknown",
-        http_status:
-          err instanceof Error && err.message.startsWith("HTTP ")
-            ? Number(err.message.slice(5))
-            : null,
-      });
     }
   };
 
   // Entrance: paper drops in and settles at -3.2deg.
   useEffect(() => {
+    track("waitlist_viewed", { source_cta: waitlistSource() });
     const ctx = gsap.context(() => {
       if (paperRef.current) {
         gsap.fromTo(
@@ -171,23 +121,24 @@ export function WaitlistReceipt() {
     return () => ctx.revert();
   }, []);
 
-  // PAID stamp slams down a beat after the confirmation readout arrives,
-  // so the sequence reads: signature → confirmation → stamp.
   useEffect(() => {
-    if (status !== "done" || !stampRef.current) return;
-    gsap.fromTo(
-      stampRef.current,
-      { opacity: 0, scale: 2.4, rotate: -40 },
-      {
-        opacity: 1,
-        scale: 1,
-        rotate: -14,
-        duration: 0.5,
-        ease: "power3.out",
-        delay: 0.55,
-      },
-    );
-  }, [status]);
+    if (status !== "done" || confirmationTracked.current) return;
+    confirmationTracked.current = true;
+    track("waitlist_confirmation_viewed", {
+      has_name: Boolean(name.trim()),
+      has_phone: phoneComplete,
+      source_cta: waitlistSource(),
+    });
+  }, [name, phoneComplete, status]);
+
+  const trackFieldStarted = (field: string) => {
+    if (startedFields.current.has(field)) return;
+    startedFields.current.add(field);
+    track("waitlist_field_started", {
+      field_name: field,
+      source_cta: waitlistSource(),
+    });
+  };
 
   return (
     <div
@@ -272,26 +223,23 @@ export function WaitlistReceipt() {
       >
         {/* Black cat pops its head up from behind the top of the receipt.
             Container height + image height match the Nav's proven crop so
-            the receipt baked into the mascot image stays below the window.
-            No z-index here — the form comes later in DOM order, so the
-            receipt naturally paints over the cat's body and we get a
-            proper "peeking from behind" look (only head/ears above the
-            zigzag edge). */}
+            the receipt baked into the mascot image stays below the window. */}
         <span
           aria-hidden
           className="pointer-events-none absolute overflow-hidden"
           style={{
-            bottom: "calc(100% - 14px)",
+            bottom: "calc(100% - 8px)",
             left: "58%",
             transform: "translateX(-50%)",
             width: "70px",
-            height: "44px",
+            height: "38px",
+            zIndex: 2,
           }}
         >
           <span
             className="block absolute left-0 top-0 w-full animate-cat-peek"
             style={{
-              backgroundImage: "url('/cat-mascot.png')",
+              backgroundImage: "url('/cat-mascot.webp')",
               backgroundSize: "100% auto",
               backgroundRepeat: "no-repeat",
               backgroundPosition: "center top",
@@ -303,7 +251,7 @@ export function WaitlistReceipt() {
         {/* Receipt paper — zigzag top + bottom edges via clip-path */}
         <form
           onSubmit={submit}
-          className="relative bg-[#F3EBDA] text-[#2a2a2a] font-mono px-7 pt-7 pb-9 shadow-[0_40px_60px_-20px_rgba(14,14,14,0.35),0_12px_24px_-12px_rgba(14,14,14,0.18)] text-left"
+          className="ph-no-capture relative bg-[#F3EBDA] text-[#2a2a2a] font-mono px-7 pt-7 pb-9 shadow-[0_40px_60px_-20px_rgba(14,14,14,0.35),0_12px_24px_-12px_rgba(14,14,14,0.18)] text-left"
           style={{
             clipPath:
               "polygon(0% 10px, 4% 0%, 8% 10px, 12% 0%, 16% 10px, 20% 0%, 24% 10px, 28% 0%, 32% 10px, 36% 0%, 40% 10px, 44% 0%, 48% 10px, 52% 0%, 56% 10px, 60% 0%, 64% 10px, 68% 0%, 72% 10px, 76% 0%, 80% 10px, 84% 0%, 88% 10px, 92% 0%, 96% 10px, 100% 0%, 100% calc(100% - 10px), 96% 100%, 92% calc(100% - 10px), 88% 100%, 84% calc(100% - 10px), 80% 100%, 76% calc(100% - 10px), 72% 100%, 68% calc(100% - 10px), 64% 100%, 60% calc(100% - 10px), 56% 100%, 52% calc(100% - 10px), 48% 100%, 44% calc(100% - 10px), 40% 100%, 36% calc(100% - 10px), 32% 100%, 28% calc(100% - 10px), 24% 100%, 20% calc(100% - 10px), 16% 100%, 12% calc(100% - 10px), 8% 100%, 4% calc(100% - 10px), 0% 100%)",
@@ -325,7 +273,7 @@ export function WaitlistReceipt() {
               className="font-grotesk italic font-bold text-[1.6rem] leading-none tracking-[-0.04em]"
               style={{ color: "#1a1a1a" }}
             >
-              tabby<span className="text-accent">.</span>
+              tabby<span className="text-[rgb(255,124,97)]">.</span>
             </div>
           </div>
 
@@ -405,7 +353,7 @@ export function WaitlistReceipt() {
                   animate={{ opacity: 1 }}
                   exit={{
                     opacity: 0,
-                    transition: { duration: 0.7, ease: [0.4, 0, 0.2, 1] },
+                    transition: { duration: 1.1, ease: [0.22, 1, 0.36, 1] },
                   }}
                   transition={{ duration: 0.2 }}
                 >
@@ -446,33 +394,25 @@ export function WaitlistReceipt() {
                 </motion.svg>
               )}
             </AnimatePresence>
-            <AnimatePresence mode="wait" initial={false}>
+            <AnimatePresence mode="popLayout" initial={false}>
               {status !== "done" ? (
                 <motion.div
                   key="form"
                   initial={{ opacity: 0, y: 8 }}
                   animate={{
-                    opacity: signing ? 0.35 : 1,
+                    opacity: signing ? 0.28 : 1,
                     y: 0,
-                    filter: signing ? "blur(0.4px)" : "blur(0px)",
+                    filter: signing ? "blur(1px)" : "blur(0px)",
                   }}
-                  exit={{ opacity: 0, y: -6 }}
-                  transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+                  exit={{ opacity: 0, y: -4, filter: "blur(3px)" }}
+                  transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
                   className="space-y-3"
                 >
                   <Field
                     label="Name"
                     value={name}
-                    onChange={(v) => {
-                      notifyStarted();
-                      setName(v);
-                    }}
-                    onBlur={(v) =>
-                      track("waitlist_form_field_blurred", {
-                        field: "name",
-                        length: v.length,
-                      })
-                    }
+                    onChange={setName}
+                    onFocus={() => trackFieldStarted("name")}
                     placeholder="your name"
                     autoComplete="name"
                     type="text"
@@ -480,52 +420,26 @@ export function WaitlistReceipt() {
                   <Field
                     label="Email"
                     value={email}
-                    onChange={(v) => {
-                      notifyStarted();
-                      setEmail(v);
-                    }}
-                    onBlur={(v) => {
-                      const trimmed = v.trim();
-                      track("waitlist_form_field_blurred", {
-                        field: "email",
-                        length: trimmed.length,
-                        email_domain: EMAIL_RE.test(trimmed)
-                          ? trimmed.split("@")[1]
-                          : null,
-                        valid: EMAIL_RE.test(trimmed),
-                      });
-                    }}
-                    placeholder="you@icloud.com"
+                    onChange={setEmail}
+                    onFocus={() => trackFieldStarted("email")}
+                    placeholder="you@example.com"
                     autoComplete="email"
                     type="email"
                     required
-                    noCapture
                   />
                   <Field
                     label="Phone"
-                    hint="optional"
                     value={phone}
-                    onChange={(v) => {
-                      notifyStarted();
-                      setPhone(formatPhone(v));
-                    }}
-                    onBlur={(v) =>
-                      track("waitlist_form_field_blurred", {
-                        field: "phone",
-                        length: v.length,
-                        digits_len: v.replace(/\D/g, "").length,
-                        valid: v.trim() === "" || v.replace(/\D/g, "").length >= 10,
-                      })
-                    }
-                    placeholder="(555) 123-4567"
+                    onChange={(v) => setPhone(formatPhone(v))}
+                    onFocus={() => trackFieldStarted("phone")}
+                    placeholder="(555) 123-4567 · optional"
                     autoComplete="tel"
                     type="tel"
-                    noCapture
                   />
 
                   {status === "error" && (
                     <div
-                      className="text-[0.62rem] uppercase tracking-[0.22em] font-bold text-accent mt-1"
+                      className="text-[0.62rem] uppercase tracking-[0.22em] font-bold text-[rgb(255,124,97)] mt-1"
                       role="alert"
                     >
                       * couldn't save · please try again *
@@ -535,7 +449,7 @@ export function WaitlistReceipt() {
                   <button
                     type="submit"
                     disabled={status === "loading" || !valid}
-                    className="group mt-3 w-full bg-[#1a1a1a] text-[#F3EBDA] uppercase tracking-[0.22em] font-bold text-[0.72rem] py-3.5 flex items-center justify-center gap-2 disabled:opacity-45 disabled:cursor-not-allowed transition-[background-color,transform] duration-200 hover:bg-accent active:translate-y-px"
+                    className="group mt-3 w-full bg-[#1a1a1a] text-[#F3EBDA] uppercase tracking-[0.22em] font-bold text-[0.72rem] py-3.5 flex items-center justify-center gap-2 disabled:opacity-45 disabled:cursor-not-allowed transition-[background-color,transform] duration-200 hover:bg-[rgb(255,124,97)] active:translate-y-[1px]"
                     style={{ borderRadius: "2px" }}
                   >
                     <span>
@@ -575,12 +489,12 @@ export function WaitlistReceipt() {
               ) : (
                 <motion.div
                   key="done"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
+                  initial={{ opacity: 0, y: 6, filter: "blur(4px)" }}
+                  animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
                   transition={{
-                    duration: 0.7,
+                    duration: 0.85,
                     ease: [0.22, 1, 0.36, 1],
-                    delay: 0.15,
+                    delay: 0.1,
                   }}
                   className="text-[0.74rem] leading-[1.7]"
                 >
@@ -591,11 +505,9 @@ export function WaitlistReceipt() {
                     label="Name"
                     value={(name.trim() || "guest").toUpperCase()}
                   />
-                  <ReadoutLine label="Email" value={emailTrimmed} />
-                  {phone.trim() && (
-                    <ReadoutLine label="Phone" value={phone} />
-                  )}
-                  <ReadoutLine label="Invite" value="Q4 · 2026" />
+                  <ReadoutLine label="Email" value={email.trim()} />
+                  {phoneComplete && <ReadoutLine label="Phone" value={phone} />}
+                  <ReadoutLine label="Notify" value="Q4 · 2026" />
                   <div className="mt-3 text-[0.62rem] uppercase tracking-[0.28em] opacity-55">
                     * enjoy the meal — not the math *
                   </div>
@@ -618,27 +530,6 @@ export function WaitlistReceipt() {
             ))}
           </div>
 
-          {/* PAID · JOINED stamp — only shows after submit */}
-          {status === "done" && (
-            <div
-              ref={stampRef}
-              aria-hidden
-              className="absolute right-5 top-[34%] pointer-events-none"
-              style={{ opacity: 0 }}
-            >
-              <div
-                className="border-[2.5px] rounded-sm px-2.5 py-1 font-bold text-[0.7rem] tracking-[0.25em]"
-                style={{
-                  borderColor: "rgba(255,124,97,0.9)",
-                  color: "rgba(255,124,97,0.9)",
-                  transform: "rotate(-14deg)",
-                  boxShadow: "0 0 0 3px rgba(255,124,97,0.08)",
-                }}
-              >
-                JOINED · $14
-              </div>
-            </div>
-          )}
         </form>
       </div>
     </div>
@@ -665,7 +556,7 @@ function Line({
       >
         {item}
       </span>
-      <span className="flex-1 overflow-hidden mx-2 opacity-35 text-[0.8em] tracking-widest">
+      <span className="flex-1 overflow-hidden mx-2 opacity-35 text-[0.8em] tracking-[0.1em]">
         ······························
       </span>
       <span
@@ -679,32 +570,23 @@ function Line({
 
 function Field({
   label,
-  hint,
   value,
   onChange,
-  onBlur,
+  onFocus,
   placeholder,
   type,
   autoComplete,
   required,
-  noCapture,
 }: {
   label: string;
-  /** Tiny right-aligned annotation (e.g. "optional") that sits on the
-   *  dashed signature line so the label column stays aligned. */
-  hint?: string;
   value: string;
   onChange: (v: string) => void;
-  onBlur?: (v: string) => void;
+  onFocus?: () => void;
   placeholder: string;
   type: "text" | "tel" | "email";
   autoComplete?: string;
   required?: boolean;
-  /** Hide the value from PostHog session recordings (PII fields). */
-  noCapture?: boolean;
 }) {
-  const inputMode =
-    type === "tel" ? "tel" : type === "email" ? "email" : undefined;
   return (
     <label className="block">
       <div className="flex items-baseline gap-2">
@@ -714,22 +596,18 @@ function Field({
         <span className="flex-1 relative">
           <input
             type={type}
-            inputMode={inputMode}
+            inputMode={
+              type === "tel" ? "tel" : type === "email" ? "email" : undefined
+            }
             autoComplete={autoComplete}
             required={required}
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            onBlur={(e) => onBlur?.(e.target.value)}
+            onFocus={onFocus}
             placeholder={placeholder}
-            data-ph-no-capture={noCapture ? "" : undefined}
-            className="peer w-full bg-transparent font-mono text-[0.82rem] tracking-[0.02em] text-[#1a1a1a] placeholder:text-[#2a2a2a]/30 focus:outline-hidden pb-1 caret-accent"
+            className="ph-no-capture peer w-full bg-transparent font-mono text-[0.82rem] tracking-[0.02em] text-[#1a1a1a] placeholder:text-[#2a2a2a]/30 focus:outline-none pb-1 caret-[rgb(255,124,97)]"
           />
-          {hint && (
-            <span className="pointer-events-none absolute right-0 bottom-1 font-bold uppercase tracking-[0.22em] text-[0.52rem] opacity-40">
-              {hint}
-            </span>
-          )}
-          <span className="pointer-events-none absolute left-0 right-0 bottom-0 border-b border-dashed border-[#2a2a2a]/45 peer-focus:border-accent peer-focus:border-solid transition-colors" />
+          <span className="pointer-events-none absolute left-0 right-0 bottom-0 border-b border-dashed border-[#2a2a2a]/45 peer-focus:border-[rgb(255,124,97)] peer-focus:border-solid transition-colors" />
         </span>
       </div>
     </label>
@@ -742,7 +620,7 @@ function ReadoutLine({ label, value }: { label: string; value: string }) {
       <span className="font-bold uppercase tracking-[0.2em] text-[0.58rem] opacity-55 w-[52px] shrink-0">
         {label}
       </span>
-      <span className="flex-1 overflow-hidden mx-2 opacity-30 text-[0.72em] tracking-widest">
+      <span className="flex-1 overflow-hidden mx-2 opacity-30 text-[0.72em] tracking-[0.1em]">
         ······························
       </span>
       <span className="font-bold tracking-[0.02em]">{value}</span>

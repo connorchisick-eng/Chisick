@@ -36,6 +36,7 @@ export function Screen({ variant }: { variant: ScreenVariant }) {
   if (variant === "scan") return <ScanScreen />;
   if (variant === "claim" || variant === "progress") return <ClaimScreen />;
   if (variant === "sugarfish") return <SugarfishScreen />;
+  if (variant === "tip") return <TipScreen />;
   return <SettleScreen />;
 }
 
@@ -53,7 +54,7 @@ function StatusBar({ dark }: { dark?: boolean }) {
       <span className="flex items-center gap-1 text-[90%]">
         <span>•••</span>
         <span>󰖩</span>
-        <span className="inline-block w-[9%] h-[42%] rounded-xs border" style={{ borderColor: color }} />
+        <span className="inline-block w-[9%] h-[42%] rounded-sm border" style={{ borderColor: color }} />
       </span>
     </div>
   );
@@ -139,7 +140,7 @@ function ScanScreen() {
 
       {/* shutter row */}
       <div className="flex items-center justify-between px-[14%] py-[4%]">
-        <span className="w-[7%] aspect-square rounded-xs border border-white/40 opacity-70" />
+        <span className="w-[7%] aspect-square rounded-sm border border-white/40 opacity-70" />
         <span className="relative w-[16%] aspect-square rounded-full bg-[#FDFBF9] flex items-center justify-center">
           <span className="absolute inset-[10%] rounded-full border-2 border-[#0E0E0E]" />
         </span>
@@ -311,7 +312,7 @@ function SettleScreen() {
 
       <div className="px-[5%]">
         <div className="bg-white rounded-[3%] p-[3%] flex items-center gap-[3%] border border-black/5">
-          <div className="relative w-[22%] aspect-3/2 rounded-[6%] bg-linear-to-br from-[#f4e4dc] to-[#ead2c4] flex items-end justify-end p-[4%] overflow-hidden">
+          <div className="relative w-[22%] aspect-[3/2] rounded-[6%] bg-gradient-to-br from-[#f4e4dc] to-[#ead2c4] flex items-end justify-end p-[4%] overflow-hidden">
             <span className="text-[70%] font-extrabold text-[#0E0E0E]">VISA</span>
             <span className="absolute top-[10%] left-[10%] w-[32%] aspect-square rounded-full bg-[#FF7C61]" />
           </div>
@@ -571,6 +572,130 @@ function SugarfishScreen() {
         <span className="text-[#FDFBF9] font-bold text-[2.2%]">
           Reserve Table
         </span>
+      </div>
+    </div>
+  );
+}
+
+// --- Add Tip (percentage picker modal over the Select Items list) ---
+
+function TipScreen() {
+  const subtotal = 64;
+  const tipPct = 20;
+  const tip = subtotal * (tipPct / 100);
+  const taxRate = 0.0825;
+  const tax = subtotal * taxRate;
+  const total = subtotal + tip + tax;
+  const fmt = (n: number) =>
+    `$${n.toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
+
+  const tips: { label: string; pct: number | null }[] = [
+    { label: "10%", pct: 10 },
+    { label: "15%", pct: 15 },
+    { label: "18%", pct: 18 },
+    { label: "20%", pct: 20 },
+    { label: "Custom", pct: null },
+  ];
+
+  return (
+    <div className="relative w-full h-full bg-[#F8F4F0] font-grotesk text-[#0E0E0E] flex flex-col">
+      <StatusBar />
+
+      {/* Faded "Select Items" view beneath the modal */}
+      <div className="px-[5%] pt-[2%] pb-[3%] flex items-center justify-between opacity-45">
+        <div className="flex items-center gap-[2%]">
+          <span className="text-[3.2%]">‹</span>
+          <span className="text-[2.4%] font-semibold text-[#0E0E0E]/70">
+            Select Items
+          </span>
+        </div>
+        <div className="flex items-center gap-[1.5%] text-[#0E0E0E]/70">
+          <span className="text-[2.4%] font-semibold">USD</span>
+          <span className="text-[2%]">▾</span>
+        </div>
+      </div>
+
+      <div className="px-[5%] pb-[2.5%] opacity-25">
+        <div className="text-[2.4%] font-semibold text-[#0E0E0E]">
+          Appetizers
+        </div>
+        <div className="mt-[3%] flex items-center justify-between gap-[3%]">
+          <div className="flex items-center gap-[3%]">
+            <span className="w-[8%] aspect-square rounded-full bg-[#0E0E0E]/15" />
+            <span className="text-[2.6%] font-semibold text-[#0E0E0E]">
+              Spinach Artichoke Dip
+            </span>
+          </div>
+          <span className="text-[2.5%] text-[#0E0E0E]/70">$14.00</span>
+        </div>
+      </div>
+
+      {/* Modal overlay — dark sheet with tip picker + totals + pay CTA */}
+      <div className="flex-1 bg-[#0E0E0E] rounded-t-[6%] px-[6%] pt-[6%] pb-[4%] text-[#FDFBF9] flex flex-col shadow-[0_-20px_40px_-10px_rgba(0,0,0,0.45)]">
+        {/* Header */}
+        <div className="relative flex items-center justify-center mb-[5.5%]">
+          <span className="text-[3.6%] font-bold">Add Tip</span>
+          <span
+            className="absolute right-0 top-1/2 -translate-y-1/2 w-[7%] aspect-square rounded-full bg-white/10 flex items-center justify-center text-[2.6%] font-bold text-[#FDFBF9]"
+            aria-hidden
+          >
+            ×
+          </span>
+        </div>
+
+        {/* Tip % buttons — 20% selected */}
+        <div className="space-y-[2.4%]">
+          {tips.map((t) => {
+            const selected = t.pct === tipPct;
+            return (
+              <div
+                key={t.label}
+                className="w-full flex items-center justify-center rounded-full text-[3%] font-bold"
+                style={{
+                  padding: "3.8% 0",
+                  background: selected ? "#012F20" : "#1A1A1A",
+                  border: selected
+                    ? "1.5px solid #02D57C"
+                    : "1.5px solid transparent",
+                  color: "#FDFBF9",
+                }}
+              >
+                {t.label}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Totals */}
+        <div className="mt-[6%] space-y-[1.5%] text-[2.7%]">
+          <div className="flex justify-between text-[#FDFBF9]/70">
+            <span>Subtotal</span>
+            <span>{fmt(subtotal)}</span>
+          </div>
+          <div className="flex justify-between text-[#02D57C]">
+            <span>Tip</span>
+            <span>{fmt(tip)}</span>
+          </div>
+          <div className="flex justify-between text-[#FDFBF9]/70">
+            <span>Tax (8.25%)</span>
+            <span>{fmt(tax)}</span>
+          </div>
+          <div className="flex justify-between text-[#FDFBF9] font-semibold">
+            <span>Total</span>
+            <span>{fmt(total)}</span>
+          </div>
+        </div>
+
+        {/* Pay CTA */}
+        <div
+          className="mt-[5%] w-full flex items-center justify-center rounded-full bg-[#02D57C] text-[#0E0E0E] text-[3.1%] font-bold"
+          style={{ padding: "4.2% 0" }}
+        >
+          Pay {fmt(total)}
+        </div>
       </div>
     </div>
   );

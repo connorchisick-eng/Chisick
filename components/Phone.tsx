@@ -3,7 +3,12 @@ import { clsx } from "clsx";
 import { useEffect, useRef } from "react";
 import Image from "next/image";
 import type { ScreenVariant } from "./Screen";
-import { TALL_VARIANTS } from "@/lib/images";
+import { Screen } from "./Screen";
+import { screenImageSrc, TALL_VARIANTS } from "@/lib/images";
+
+// Variants rendered as first-class React components instead of PNGs.
+// Empty for now — the Figma-rendered PNG for "tip" is the source of truth.
+const CODED_VARIANTS = new Set<ScreenVariant>();
 
 type Props = {
   variant: ScreenVariant;
@@ -52,25 +57,30 @@ export function Phone({ variant, className, shadow = true, tilt = false }: Props
   }, [tilt]);
 
   const isTall = TALL_VARIANTS.has(variant);
+  const src = screenImageSrc(variant);
 
   return (
     <div
       ref={cardRef}
       className={clsx(
-        "phone-card relative aspect-9/19.5 rounded-[1.75rem] overflow-hidden bg-white select-none",
+        "phone-card relative aspect-[9/19.5] rounded-[1.75rem] overflow-hidden bg-white select-none",
         shadow && "shadow-[0_40px_80px_-35px_rgba(14,14,14,0.45)]",
         tilt && "transition-transform duration-500 ease-out will-change-transform",
         className,
       )}
       style={tilt ? { transformStyle: "preserve-3d" } : undefined}
     >
-      {isTall ? (
+      {CODED_VARIANTS.has(variant) ? (
+        <div className="absolute inset-0">
+          <Screen variant={variant} />
+        </div>
+      ) : isTall ? (
         // Tall PNG (e.g. smart-receipts is 1179×3462) — wrap in an
         // overflow-hidden frame and slow-scroll the image so the bottom
         // becomes visible on a loop instead of getting cropped.
         <div className="absolute inset-0 overflow-hidden">
           <img
-            src={`/screens/${variant}.png`}
+            src={src}
             alt={`Tabby ${variant} screen`}
             className="block w-full h-auto pointer-events-none phone-tall-scroll"
             draggable={false}
@@ -78,7 +88,7 @@ export function Phone({ variant, className, shadow = true, tilt = false }: Props
         </div>
       ) : (
         <Image
-          src={`/screens/${variant}.png`}
+          src={src}
           alt={`Tabby ${variant} screen`}
           fill
           sizes="(max-width: 768px) 70vw, 420px"

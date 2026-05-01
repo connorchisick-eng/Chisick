@@ -1,15 +1,10 @@
 import { ImageResponse } from "next/og";
-import { readFile } from "fs/promises";
-import { join } from "path";
 
+export const runtime = "edge";
 export const size = { width: 180, height: 180 };
 export const contentType = "image/png";
 
-export default async function AppleIcon() {
-  const logoPath = join(process.cwd(), "public", "ante-logo.png");
-  const logoBuffer = await readFile(logoPath);
-  const logoBase64 = `data:image/png;base64,${logoBuffer.toString("base64")}`;
-
+export default function AppleIcon() {
   return new ImageResponse(
     (
       <div
@@ -19,9 +14,27 @@ export default async function AppleIcon() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
+          background: "transparent",
         }}
       >
-        <img src={logoBase64} width={180} height={180} alt="" />
+        <div
+          style={{
+            width: 180,
+            height: 180,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "#FFFFFF",
+            borderRadius: 40,
+          }}
+        >
+          <img
+            src="https://framerusercontent.com/images/8ziC1H7zLZIh36Br3ZlUaplUabg.png"
+            width={132}
+            height={132}
+            alt=""
+          />
+        </div>
       </div>
     ),
     size,

@@ -2,18 +2,17 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useCallback, useEffect, useState } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import { LOGO } from "@/lib/images";
 import { Arrow } from "./icons";
-import { ThemeToggle } from "./ThemeToggle";
-import { track } from "@/lib/analytics";
 import { clsx } from "clsx";
+import { track } from "@/lib/analytics";
+import { useEscapeClose } from "@/lib/useEscapeClose";
 
 const LINKS = [
   { href: "/#how-it-works", label: "How it works" },
-  { href: "/#features", label: "Features" },
-  { href: "/#pricing", label: "Pricing" },
+  { href: "/#features", label: "Payments" },
   { href: "/#faq", label: "FAQ" },
 ];
 
@@ -22,6 +21,17 @@ export function Nav() {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const [progress, setProgress] = useState(0);
+  // onDark flips to true when a section marked `data-nav-invert` is sitting
+  // under the nav. Drives the nav text / logo / pill from ink → cream so the
+  // bar never disappears against a dark panel.
+  const [onDark, setOnDark] = useState(false);
+
+  const closeMobileMenu = useCallback(() => {
+    setOpen(false);
+    track("nav_mobile_menu_toggled", { open: false });
+  }, []);
+
+  useEscapeClose(open, closeMobileMenu);
 
   useEffect(() => {
     const onScroll = () => {
@@ -36,6 +46,68 @@ export function Nav() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  // Observe dark sections. Whenever one sits across the nav line (top 120px
+  // of the viewport), mark the nav as "on dark" so text flips to cream.
+  useEffect(() => {
+    const observed = new WeakSet<Element>();
+    const active = new Set<Element>();
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => {
+          if (e.isIntersecting) active.add(e.target);
+          else active.delete(e.target);
+        });
+        setOnDark(active.size > 0);
+      },
+      {
+        // Observation band sits behind the nav: from just below the
+        // header's top edge (24px) down to ~88% of the viewport. A section
+        // is "under the nav" while its bounding rect overlaps this band.
+        // (Previously "-100%" on the bottom produced a negative-height
+        // root rect which some browsers treat as never-intersecting, so
+        // the inversion missed the pinned StickyStack on first paint.)
+        rootMargin: "-24px 0px -88% 0px",
+        threshold: 0,
+      },
+    );
+
+    const observeAll = () => {
+      const targets = document.querySelectorAll<HTMLElement>(
+        "[data-nav-invert]",
+      );
+      let added = false;
+      targets.forEach((t) => {
+        if (!observed.has(t)) {
+          observed.add(t);
+          io.observe(t);
+          added = true;
+        }
+      });
+      if (!targets.length) setOnDark(false);
+      return added;
+    };
+
+    observeAll();
+
+    // The HowItWorks section can mount its animated content after hydration,
+    // so the nav's first query can miss it. Watch for late additions and
+    // observe them as they appear.
+    const mo = new MutationObserver(() => {
+      observeAll();
+    });
+    mo.observe(document.body, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ["data-nav-invert"],
+    });
+
+    return () => {
+      mo.disconnect();
+      io.disconnect();
+    };
+  }, [pathname]);
+
   useEffect(() => {
     if (open) document.documentElement.style.overflow = "hidden";
     else document.documentElement.style.overflow = "";
@@ -44,44 +116,34 @@ export function Nav() {
     };
   }, [open]);
 
-  // Close the mobile menu on Escape for keyboard users.
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open]);
-
   return (
     <>
       <motion.header
-        role="banner"
         initial={false}
         animate={{
-          // Adaptive header bg driven by the --nav-bg RGB tuple so it flips
-          // cleanly with the theme without re-running framer on every swap.
           backgroundColor: scrolled
-            ? "rgba(var(--nav-bg), 0.92)"
-            : "rgba(var(--nav-bg), 0)",
+            ? onDark
+              ? "rgba(14, 14, 14, 0.82)"
+              : "rgba(255, 255, 255, 0.88)"
+            : onDark
+            ? "rgba(14, 14, 14, 0)"
+            : "rgba(255, 255, 255, 0)",
           boxShadow: scrolled
-            ? "0 1px 0 var(--line)"
-            : "0 1px 0 rgba(0,0,0,0)",
+            ? onDark
+              ? "0 1px 0 rgba(255, 255, 255, 0.06)"
+              : "0 1px 0 rgba(14, 14, 14, 0.08)"
+            : "0 1px 0 rgba(14, 14, 14, 0)",
           backdropFilter: scrolled ? "blur(12px)" : "blur(0px)",
         }}
         transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-        className="fixed top-0 left-0 right-0 z-50"
+        className={clsx(
+          "fixed top-0 left-0 right-0 z-50 transition-opacity duration-200",
+          open && "md:opacity-100 opacity-0 pointer-events-none",
+        )}
+        data-on-dark={onDark ? "true" : "false"}
       >
-        {/* Scroll progress — thin accent line */}
-        <div
-          className="absolute top-0 left-0 right-0 h-[2px] bg-transparent pointer-events-none overflow-hidden"
-          role="progressbar"
-          aria-label="Page scroll"
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-valuenow={Math.round(progress * 100)}
-        >
+        {/* Scroll progress — thin accent line that grows as you read */}
+        <div className="absolute top-0 left-0 right-0 h-[2px] bg-transparent pointer-events-none overflow-hidden">
           <div
             className="h-full bg-accent origin-left"
             style={{
@@ -92,35 +154,46 @@ export function Nav() {
         </div>
         <div className="mx-auto max-w-[1440px] px-6 lg:px-10">
           <div className="flex items-center justify-between h-[104px]">
-            <Link
-              href="/"
-              className="flex items-center gap-3 group"
-              aria-label="Tabby — home"
-              onClick={() => track("nav_logo_clicked")}
-            >
+            <Link href="/" className="flex items-center gap-3 group">
               <motion.span
                 whileHover={{ rotate: 8, scale: 1.05 }}
                 transition={{ type: "spring", stiffness: 400, damping: 18 }}
                 className="relative inline-flex items-center justify-center w-14 h-14 rounded-[30%] overflow-hidden bg-ink shadow-[0_4px_12px_rgba(14,14,14,0.18),inset_0_1px_0_rgba(255,255,255,0.08)]"
-                aria-hidden
               >
                 <Image
                   src={LOGO}
-                  alt=""
+                  alt="Tabby"
                   width={56}
                   height={56}
                   priority
                   className="block w-full h-full object-contain"
                 />
               </motion.span>
-              {/* Masthead-style lockup */}
+              {/* Masthead-style lockup: wordmark over a small meta label.
+                  "Launching Q4 '26" reads as a publication-style subtitle
+                  rather than a competing badge, so the ribbon stays calm. */}
               <span className="flex flex-col leading-none">
-                <span className="text-[1.4rem] font-bold tracking-[-0.02em] text-fg leading-none">
+                <span
+                  className={clsx(
+                    "text-[1.4rem] font-bold tracking-[-0.02em] leading-none transition-colors duration-300",
+                    onDark ? "text-cream" : "text-body",
+                  )}
+                >
                   tabby
                 </span>
-                <span className="hidden sm:flex items-baseline gap-1.5 mt-1.5 text-[0.62rem] uppercase tracking-[0.2em] font-semibold text-fg/60 leading-none">
+                <span
+                  className={clsx(
+                    "hidden sm:flex items-baseline gap-1.5 mt-1.5 text-[0.62rem] uppercase tracking-[0.2em] font-semibold leading-none transition-colors duration-300",
+                    onDark ? "text-cream/70" : "text-body/60",
+                  )}
+                >
                   Launching
-                  <span className="font-grotesk italic font-bold text-fg tracking-[-0.01em] text-[0.78rem]">
+                  <span
+                    className={clsx(
+                      "font-grotesk italic font-bold tracking-[-0.01em] text-[0.78rem]",
+                      onDark ? "text-cream" : "text-body",
+                    )}
+                  >
                     Q4 &apos;26
                   </span>
                 </span>
@@ -128,30 +201,56 @@ export function Nav() {
             </Link>
 
             <nav
-              className="hidden md:flex items-center gap-10 text-[0.95rem] text-fg/80"
-              aria-label="Primary"
+              className={clsx(
+                "hidden md:flex items-center gap-10 text-[0.95rem] transition-colors duration-300",
+                onDark ? "text-cream/90" : "text-body/80",
+              )}
             >
               {LINKS.map((l) => (
                 <a
                   key={l.href}
                   href={l.href}
-                  className="ul-link font-medium"
                   onClick={() =>
-                    track("nav_link_clicked", {
-                      section: l.href.replace(/^\/?#/, ""),
-                      surface: "desktop",
+                    track("cta_clicked", {
+                      cta_name: l.label,
+                      location: "nav_desktop",
+                      target_path: l.href,
                     })
                   }
+                  className="ul-link font-medium"
                 >
                   {l.label}
                 </a>
               ))}
             </nav>
 
-            <div className="flex items-center gap-2 sm:gap-3">
-              <ThemeToggle />
+            <div className="flex items-center gap-3">
+              {/* Live Demo — standout external CTA */}
+              <Link
+                href="/demo"
+                onClick={() =>
+                  track("cta_clicked", {
+                    cta_name: "live_demo",
+                    location: "nav_desktop",
+                    target_path: "/demo",
+                  })
+                }
+                className={clsx(
+                  "hidden md:inline-flex items-center gap-2 rounded-full text-sm font-semibold transition-all duration-300 border",
+                  "px-4 py-2",
+                  onDark
+                    ? "bg-transparent border-cream/30 text-cream hover:bg-cream/10 hover:border-cream/60"
+                    : "bg-transparent border-accent/40 text-accent hover:bg-accent/8 hover:border-accent",
+                )}
+              >
+                Live Demo
+                <Arrow className="arrow" />
+              </Link>
               <div className="relative hidden sm:inline-flex">
-                {/* Black Tabby cat peeking up from behind the CTA */}
+                {/* Black Tabby cat peeking up from behind the CTA — head only
+                    (the asset is taller than the visible window; overflow-hidden
+                    crops the receipt below). Hidden on /waitlist where the cat
+                    peeks from the receipt instead. */}
                 {pathname !== "/waitlist" && (
                   <span
                     aria-hidden
@@ -159,14 +258,14 @@ export function Nav() {
                     style={{
                       bottom: "calc(100% - 6px)",
                       width: "70px",
-                      height: "44px",
+                      height: "38px",
                       zIndex: 1,
                     }}
                   >
                     <span
                       className="block absolute left-0 top-0 w-full animate-cat-peek"
                       style={{
-                        backgroundImage: "url('/cat-mascot.png')",
+                        backgroundImage: "url('/cat-mascot.webp')",
                         backgroundSize: "100% auto",
                         backgroundRepeat: "no-repeat",
                         backgroundPosition: "center top",
@@ -178,22 +277,29 @@ export function Nav() {
                 <Link
                   href="/waitlist"
                   onClick={() =>
-                    track("cta_join_waitlist_clicked", { surface: "nav" })
+                    track("cta_clicked", {
+                      cta_name: "join_waitlist",
+                      location: "nav_desktop",
+                      target_path: "/waitlist",
+                    })
                   }
-                  className="btn-primary text-sm py-2.5! px-5! relative z-10"
+                  className="btn-primary text-sm !py-2.5 !px-5 relative z-10"
                 >
                   Join the Waitlist
                   <Arrow className="arrow" />
                 </Link>
               </div>
               <button
-                className="md:hidden relative z-70 w-11 h-11 rounded-full grid place-items-center bg-ink text-white"
-                aria-label={open ? "Close menu" : "Open menu"}
-                aria-expanded={open}
-                aria-controls="mobile-menu"
-                onClick={() => setOpen((o) => !o)}
+                className="md:hidden relative z-[70] w-11 h-11 rounded-full grid place-items-center bg-ink text-white"
+                aria-label="Menu"
+                onClick={() =>
+                  setOpen((o) => {
+                    track("nav_mobile_menu_toggled", { open: !o });
+                    return !o;
+                  })
+                }
               >
-                <span className="relative block w-5 h-3.5" aria-hidden>
+                <span className="relative block w-5 h-3.5">
                   <span
                     className={clsx(
                       "absolute left-0 right-0 h-[1.6px] bg-white transition-transform duration-500",
@@ -220,28 +326,39 @@ export function Nav() {
       </motion.header>
 
       {/* Full-screen overlay menu (mobile) */}
-      <div
-        id="mobile-menu"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Main navigation"
-        aria-hidden={!open}
-        className={clsx("menu-overlay md:hidden!", open && "is-open")}
-      >
+      <div className={clsx("menu-overlay md:!hidden", open && "is-open")}>
         <AnimatePresence>
           {open && (
             <motion.div
-              className="w-full px-8 flex flex-col items-center text-center gap-8"
+              className="relative w-full min-h-[100dvh] flex flex-col items-center justify-center px-8 text-center gap-8"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
               transition={{ delay: 0.2, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
             >
+              <button
+                type="button"
+                aria-label="Close menu"
+                className="absolute top-6 right-6 z-10 grid h-12 w-12 place-items-center rounded-full border border-white/20 bg-white/10 text-white backdrop-blur-sm transition-colors hover:bg-white/20"
+                onClick={closeMobileMenu}
+              >
+                <span className="relative block h-5 w-5" aria-hidden>
+                  <span className="absolute left-1/2 top-1/2 h-[2px] w-5 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-full bg-current" />
+                  <span className="absolute left-1/2 top-1/2 h-[2px] w-5 -translate-x-1/2 -translate-y-1/2 -rotate-45 rounded-full bg-current" />
+                </span>
+              </button>
               {LINKS.map((l, i) => (
                 <motion.a
                   key={l.href}
                   href={l.href}
-                  onClick={() => setOpen(false)}
+                  onClick={() => {
+                    track("cta_clicked", {
+                      cta_name: l.label,
+                      location: "nav_mobile_menu",
+                      target_path: l.href,
+                    });
+                    setOpen(false);
+                  }}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.25 + i * 0.08, ease: [0.22, 1, 0.36, 1], duration: 0.6 }}
@@ -251,14 +368,43 @@ export function Nav() {
                 </motion.a>
               ))}
               <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.55, ease: [0.22, 1, 0.36, 1], duration: 0.6 }}
+                className="mt-4"
+              >
+                <Link
+                  href="/demo"
+                  onClick={() => {
+                    track("cta_clicked", {
+                      cta_name: "live_demo",
+                      location: "nav_mobile_menu",
+                      target_path: "/demo",
+                    });
+                    setOpen(false);
+                  }}
+                  className="inline-flex items-center gap-3 rounded-full border border-accent/50 bg-transparent text-accent px-6 py-3 text-lg font-bold"
+                >
+                  Live Demo
+                  <span className="arrow">→</span>
+                </Link>
+              </motion.div>
+              <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ delay: 0.6, duration: 0.5 }}
-                className="mt-6"
+                transition={{ delay: 0.65, duration: 0.5 }}
+                className="mt-2"
               >
                 <Link
                   href="/waitlist"
-                  onClick={() => setOpen(false)}
+                  onClick={() => {
+                    track("cta_clicked", {
+                      cta_name: "join_waitlist",
+                      location: "nav_mobile_menu",
+                      target_path: "/waitlist",
+                    });
+                    setOpen(false);
+                  }}
                   className="btn-primary"
                 >
                   Join the Waitlist

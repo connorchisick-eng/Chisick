@@ -6,35 +6,6 @@ import { clsx } from "clsx";
 import { Phone } from "@/components/Phone";
 import { Arrow } from "@/components/icons";
 
-/**
- * Renders a payment-method icon via CSS `mask-image` so its color can be
- * driven by `bg-*` utility classes and tracks the active theme. We used to
- * render these as <img> tags, which meant the SVGs' `fill="currentColor"`
- * declarations were ignored (external SVGs can't inherit CSS color) — so
- * in dark mode the icons rendered near-black on a near-black chip.
- * Switching to a mask means a single div takes on whatever color its
- * utility class sets, light or dark.
- */
-function MaskIcon({ icon, className }: { icon: string; className?: string }) {
-  const url = `url(/icons/${icon}.svg)`;
-  return (
-    <span
-      aria-hidden
-      className={clsx("block pointer-events-none", className)}
-      style={{
-        WebkitMaskImage: url,
-        maskImage: url,
-        WebkitMaskRepeat: "no-repeat",
-        maskRepeat: "no-repeat",
-        WebkitMaskPosition: "center",
-        maskPosition: "center",
-        WebkitMaskSize: "contain",
-        maskSize: "contain",
-      }}
-    />
-  );
-}
-
 export function Showcase() {
   const sectionRef = useRef<HTMLDivElement>(null);
   // Block 3 — which of the two phones is currently in front. Tap either to swap.
@@ -129,85 +100,145 @@ export function Showcase() {
   return (
     <section
       id="features"
-      data-section="showcase"
       ref={sectionRef}
-      className="relative bg-canvas text-fg overflow-hidden"
+      data-nav-invert
+      className="relative bg-ink text-cream overflow-hidden"
     >
       <div className="noise" />
 
-      {/* BLOCK 1 — no phone; text left, payment methods grid right */}
+      {/* ═══════════════ § 01 + § 02 — Payments + Fee ═══════════════
+          One unified editorial spread. Heading + 4-method list on the left,
+          the 1.5% fee + supporting bullets on the right. Both stories live
+          on the same canvas — half the height, all the info. */}
       <div
         data-reverse="false"
-        className="sc-block relative mx-auto max-w-[1440px] px-6 lg:px-10 pt-14 lg:pt-20 pb-20 lg:pb-28"
+        className="sc-block relative mx-auto max-w-[1440px] px-6 lg:px-10 pt-16 lg:pt-24 pb-14 lg:pb-20"
       >
-        <div className="relative grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 items-start">
-          <div className="lg:col-span-5 relative z-10">
-            <div className="sc-eyebrow eyebrow">Payments</div>
-            <h3 className="sc-heading mt-5 font-grotesk font-bold text-fg text-section">
-              Pay <span className="italic text-accent">your</span> way
+        <ChapterMark num="01" label="Payments & the fee" tone="dark" />
+
+        <div className="relative mt-8 lg:mt-12 grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 items-start">
+          {/* Methods — left */}
+          <div className="lg:col-span-7 relative z-10">
+            <h3
+              className="sc-heading font-grotesk font-bold text-cream leading-[0.94] tracking-[-0.03em]"
+              style={{ fontSize: "clamp(2.5rem, 4.8vw, 4.5rem)" }}
+            >
+              Pay <span className="italic text-accent">your</span> way.
             </h3>
-            <p className="sc-body mt-6 text-lg text-fg/65 max-w-md leading-[1.6]">
-              Apple Pay, credit card, debit, bank transfer. Use whatever works
-              for you — and crypto is next.
+            <p className="sc-body mt-4 text-[0.98rem] lg:text-[1.05rem] text-cream/60 max-w-[36ch] leading-[1.55]">
+              Apple Pay, credit, debit, bank transfer. Crypto is next.
             </p>
-          </div>
-          <div className="lg:col-span-7 relative z-10 lg:mt-[88px]">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+            <ul className="mt-7 lg:mt-9 border-y border-cream/15 divide-y divide-cream/10">
               {[
-                { label: "Tap to pay", icon: "tap-to-pay" },
-                { label: "Debit / Credit card", icon: "creditcard" },
-                { label: "Bank transfer", icon: "bank" },
-                { label: "Crypto", icon: "bitcoin", soon: true },
-              ].map((c) => (
-                <div
+                { label: "Tap to pay", tag: "Instant", icon: "tap-to-pay" },
+                { label: "Debit / Credit card", tag: "+3% fee", icon: "creditcard" },
+                { label: "Bank transfer", tag: "Free", icon: "bank" },
+                { label: "Crypto", tag: "Soon", icon: "bitcoin", soon: true },
+              ].map((c, i) => (
+                <li
                   key={c.label}
-                  className={clsx(
-                    "sc-card group relative flex flex-col sm:flex-row items-center sm:items-center gap-4 sm:gap-5 p-6 rounded-2xl bg-card border border-line transition-all hover:-translate-y-0.5 text-center sm:text-left overflow-hidden",
-                    c.soon ? "hover:border-accent/50" : "hover:border-accent/40",
-                  )}
+                  className="sc-card relative flex items-center gap-4 sm:gap-5 py-3.5 sm:py-4"
                 >
-                  {/* Subtle accent glow on hover — lifts the card without
-                      repainting it. Kept low-opacity so the brand color
-                      suggests, not shouts. */}
                   <span
-                    aria-hidden
-                    className="pointer-events-none absolute -top-8 -left-8 w-28 h-28 rounded-full bg-accent/20 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                  />
-                  <span className="relative w-14 h-14 rounded-xl grid place-items-center shrink-0 bg-surface border border-line-strong shadow-[0_4px_12px_rgba(0,0,0,0.08)] group-hover:bg-accent/10 group-hover:border-accent/40 transition-colors duration-300">
-                    <MaskIcon
-                      icon={c.icon}
-                      className="w-7 h-7 bg-fg/85 group-hover:bg-accent transition-colors duration-300"
+                    className="font-grotesk font-bold text-cream/30 tabular-nums tracking-[-0.04em] leading-none w-9 sm:w-12 shrink-0"
+                    style={{ fontSize: "clamp(1.15rem, 1.7vw, 1.5rem)" }}
+                  >
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  <span className="w-9 h-9 rounded-full grid place-items-center shrink-0 bg-cream text-ink shadow-[0_4px_14px_rgba(0,0,0,0.25)]">
+                    <img
+                      src={`/icons/${c.icon}.svg`}
+                      alt=""
+                      aria-hidden
+                      width={20}
+                      height={20}
+                      className="pointer-events-none"
                     />
                   </span>
-                  <span className="relative text-base lg:text-lg text-fg/90 sm:flex-1 font-medium">
+                  <span className="flex-1 min-w-0 font-grotesk font-bold text-cream tracking-[-0.015em] text-[1rem] sm:text-[1.1rem] leading-tight">
                     {c.label}
                   </span>
-                  {c.soon && (
-                    <span className="relative text-[0.62rem] uppercase tracking-[0.18em] text-accent/90 font-semibold border border-accent/30 bg-accent/5 rounded-full px-2 py-1">
-                      Coming later
-                    </span>
-                  )}
-                </div>
+                  <span
+                    className={clsx(
+                      "text-[0.62rem] uppercase tracking-[0.22em] font-semibold whitespace-nowrap shrink-0 tabular-nums",
+                      c.soon ? "text-accent" : "text-cream/45",
+                    )}
+                  >
+                    {c.tag}
+                  </span>
+                </li>
               ))}
-            </div>
+            </ul>
           </div>
+
+          {/* Fee — right */}
+          <aside className="lg:col-span-5 relative z-10 lg:pl-8 lg:border-l lg:border-cream/10">
+            <div className="sc-body flex items-center gap-3 text-[0.66rem] uppercase tracking-[0.28em] font-semibold text-accent">
+              <span aria-hidden className="w-1.5 h-1.5 rounded-full bg-accent" />
+              Settlement fee
+            </div>
+
+            <div className="sc-heading mt-3 flex items-baseline gap-2 lg:gap-3">
+              <span
+                className="font-grotesk font-bold text-cream tabular-nums tracking-[-0.05em] leading-[0.85]"
+                style={{ fontSize: "clamp(4.5rem, 11vw, 9rem)" }}
+              >
+                1<span className="text-accent">.</span>5
+              </span>
+              <span
+                className="font-grotesk font-bold text-accent leading-[0.9] tracking-[-0.04em]"
+                style={{ fontSize: "clamp(2.25rem, 5.5vw, 4.5rem)" }}
+              >
+                %
+              </span>
+            </div>
+            <p className="sc-body mt-1 font-grotesk italic font-medium text-cream/70 text-[0.95rem] lg:text-[1.05rem] leading-[1.4]">
+              one tab, one fee. paid by whoever started it.
+            </p>
+
+            <ul className="sc-body mt-6 lg:mt-7 grid grid-cols-1 gap-2 text-[0.78rem] lg:text-[0.82rem] text-cream/70 leading-tight">
+              {[
+                "No per-person fees",
+                "No hidden charges",
+                "Host pays the fee, not the table",
+                "Settles overnight",
+              ].map((b, i) => (
+                <li key={b} className="flex items-center gap-3">
+                  <span className="font-grotesk font-bold text-accent tabular-nums leading-none w-5 shrink-0 text-[0.78rem]">
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  <span aria-hidden className="w-3 h-px bg-cream/30 shrink-0" />
+                  <span>{b}</span>
+                </li>
+              ))}
+            </ul>
+          </aside>
         </div>
       </div>
 
-      {/* BLOCK 2 — FULL-BLEED BOLD COLOR, NO SCREEN */}
-      <div data-reverse="true" className="sc-block relative w-full pt-12 lg:pt-20 pb-24 lg:pb-32">
-        <div className="sc-image relative w-full">
+      {/* ═══════════════ § 02 — THE HANDOFF ═══════════════
+          Cream slab. Hero claim + tight 3-step flow. All copy compressed
+          to fragments — heading carries the punch, nodes are noun phrases.
+          Mobile gets noticeably more top padding so the chapter mark has
+          breathing room above the cream card and isn't crushed against the
+          tail of the Payments list. */}
+      <div data-reverse="true" className="sc-block relative w-full pt-12 sm:pt-14 lg:pt-6 pb-20 lg:pb-28">
+        <div className="mx-auto max-w-[1440px] px-6 lg:px-10 pb-7 sm:pb-6 lg:pb-8">
+          <ChapterMark num="02" label="The handoff" tone="dark" />
+        </div>
+
+        <div className="sc-image relative mx-auto max-w-[1440px] px-6 lg:px-10">
           <div
-            className="sc-full-image relative mx-auto w-[88vw] max-w-[1360px] min-h-[560px] md:min-h-[620px] lg:min-h-[640px] rounded-[1.4rem] overflow-hidden bg-cream"
+            className="sc-full-image relative w-full rounded-[1.4rem] overflow-hidden bg-cream"
             style={{
               backgroundImage:
-                "radial-gradient(circle at 85% 120%, rgba(255,124,97,0.28), transparent 55%), radial-gradient(circle at 10% -20%, rgba(255,124,97,0.22), transparent 55%)",
+                "radial-gradient(circle at 85% 110%, rgba(255,124,97,0.28), transparent 55%), radial-gradient(circle at 10% -20%, rgba(255,124,97,0.22), transparent 55%)",
             }}
           >
-            {/* decorative grid lines */}
             <div
               aria-hidden
-              className="absolute inset-0 opacity-[0.08]"
+              className="absolute inset-0 opacity-[0.06]"
               style={{
                 backgroundImage:
                   "linear-gradient(90deg, rgba(14,14,14,0.8) 1px, transparent 1px)",
@@ -215,173 +246,194 @@ export function Showcase() {
               }}
             />
 
-            {/* "settled." wordmark — scaled down on mobile, anchored
-                bottom-right on desktop. */}
+            {/* "settled." stamp — rotated, anchored bottom-right */}
             <div
               aria-hidden
-              className="pointer-events-none absolute right-[4%] bottom-[2%] md:right-[2%] md:bottom-[4%] font-grotesk italic font-bold text-ink/10 leading-none select-none"
-              style={{ fontSize: "clamp(3rem, 12vw, 14rem)", letterSpacing: "0.01em" }}
+              className="pointer-events-none absolute right-[3%] bottom-[3%] md:right-[2.5%] md:bottom-[5%] font-grotesk italic font-bold text-ink/[0.08] leading-none select-none whitespace-nowrap"
+              style={{
+                fontSize: "clamp(2.5rem, 9.5vw, 11rem)",
+                letterSpacing: "0.01em",
+                transform: "rotate(-4deg)",
+                transformOrigin: "100% 100%",
+              }}
             >
               settled.
             </div>
 
-            <div className="relative h-full min-h-[inherit] flex items-center justify-center md:justify-start py-12 md:py-16 lg:py-20">
-              <div className="w-full px-6 md:pl-[4vw] md:pr-[4vw] lg:pl-[5vw] md:max-w-[1000px] relative z-10 text-center md:text-left flex flex-col items-center md:items-start gap-8 md:gap-12">
-                <div className="flex flex-col items-center md:items-start gap-5 md:gap-7">
-                  <h3 className="sc-heading font-grotesk font-bold text-ink text-title md:text-display leading-[1.05] md:leading-[0.98]">
-                    No one fronts <span className="italic">the bill.</span>
-                  </h3>
-                  <p className="sc-body text-base md:text-lg text-ink/75 max-w-xl mx-auto md:mx-0 leading-[1.6]">
-                    Everyone pays their share up front. Funds are held safely
-                    until the tab is complete, then a one-time virtual card
-                    appears on the host's phone — one tap at the POS and the
-                    restaurant is paid in a single transaction.
-                  </p>
+            <div className="relative px-8 md:px-[5.5vw] lg:px-[6vw] py-12 md:py-14 lg:py-16 grid grid-cols-1 md:grid-cols-12 gap-10 md:gap-14 items-start">
+              {/* Left — claim */}
+              <div className="md:col-span-7 flex flex-col items-center md:items-start text-center md:text-left">
+                <div className="flex items-center gap-3 text-[0.66rem] uppercase tracking-[0.28em] font-semibold text-ink/55">
+                  <span aria-hidden className="inline-block w-7 h-px bg-ink/40" />
+                  The flow
                 </div>
+                <h3
+                  className="sc-heading mt-4 font-grotesk font-bold text-ink leading-[0.94] tracking-[-0.03em] max-w-[14ch]"
+                  style={{ fontSize: "clamp(2.5rem, 6.4vw, 5.75rem)" }}
+                >
+                  No one fronts <span className="italic">the bill.</span>
+                </h3>
+                <p className="sc-body mt-5 text-[0.98rem] md:text-[1.05rem] text-ink/70 max-w-md leading-[1.55]">
+                  Everyone pays first. Funds wait in escrow. A one-time
+                  virtual card lands on the host&apos;s phone — one tap at
+                  the POS pays the restaurant in full.
+                </p>
+              </div>
 
-                <div className="sc-body grid grid-cols-1 sm:grid-cols-3 gap-8 sm:gap-6 md:gap-10 lg:gap-14 w-full max-w-3xl">
-                  {[
-                    { h: "Safe hold", c: "Funds held until settled" },
-                    { h: "Virtual card", c: "One clean transaction" },
-                    { h: "1 tap", c: "Host pays the restaurant" },
-                  ].map((m) => (
-                    <div
-                      key={m.h}
-                      className="flex flex-col items-center sm:items-start text-center sm:text-left gap-3"
-                    >
+              {/* Right — 3-step flow, vertical, tight */}
+              <ol className="sc-body md:col-span-5 md:pl-6 md:border-l md:border-ink/15 flex flex-col">
+                {[
+                  { n: "01", h: "Everyone pays", c: "Funds enter escrow" },
+                  { n: "02", h: "Card mints", c: "One-time virtual card" },
+                  { n: "03", h: "Host taps", c: "Restaurant paid in full" },
+                ].map((m, i, arr) => (
+                  <li
+                    key={m.n}
+                    className={clsx(
+                      "py-4 flex items-baseline gap-4",
+                      i < arr.length - 1 && "border-b border-ink/12",
+                    )}
+                  >
+                    <span className="font-grotesk font-bold text-accent tabular-nums leading-none text-[1rem] w-7 shrink-0">
+                      {m.n}
+                    </span>
+                    <div className="flex-1">
                       <div
-                        className="font-grotesk font-bold text-ink leading-[1.02] tracking-[-0.02em] whitespace-nowrap"
-                        style={{ fontSize: "clamp(1.6rem, 2.6vw, 2.4rem)" }}
+                        className="font-grotesk font-bold text-ink leading-[1.05] tracking-[-0.02em]"
+                        style={{ fontSize: "clamp(1.2rem, 1.9vw, 1.6rem)" }}
                       >
                         {m.h}
                       </div>
-                      <div className="text-[0.68rem] md:text-[0.72rem] uppercase tracking-[0.2em] text-ink/55 font-semibold leading-[1.45]">
+                      <div className="mt-1 text-[0.78rem] uppercase tracking-[0.18em] text-ink/55 font-semibold leading-tight">
                         {m.c}
                       </div>
                     </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-          </div>
-        </div>
-      </div>
-
-      {/* BLOCK 3 — text left, phone right + QR */}
-      <div
-        data-reverse="false"
-        className="sc-block relative mx-auto max-w-[1440px] px-6 lg:px-10 pb-32 lg:pb-40"
-      >
-        <div className="relative grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 items-center">
-          <div className="lg:col-span-6 relative z-10 order-2 lg:order-1">
-            <div className="sc-eyebrow eyebrow">Share</div>
-            <h3 className="sc-heading mt-5 font-grotesk font-bold text-fg text-section">
-              Invite your <span className="italic text-accent">friends.</span>
-            </h3>
-            <p className="sc-body mt-6 text-lg text-fg/65 max-w-md leading-[1.6]">
-              Every table gets a unique QR code. Every friend gets their own
-              friend code. Scan, join, split — no app install required for your
-              guests.
-            </p>
-            <div className="mt-10 flex items-start gap-6">
-              <div className="relative shrink-0">
-                <div className="w-36 h-36 rounded-2xl bg-cream p-3 shadow-[0_24px_60px_-20px_rgba(255,124,97,0.35)] border border-line">
-                  <img
-                    src="/qr-code.svg"
-                    alt=""
-                    width={120}
-                    height={120}
-                    className="w-full h-full object-contain pointer-events-none"
-                    aria-hidden
-                  />
-                </div>
-                <span className="absolute -top-3 -right-3 bg-accent text-white text-[0.58rem] uppercase tracking-[0.22em] font-bold px-2.5 py-1 rounded-full rotate-6 shadow-md">
-                  Table 07
-                </span>
-              </div>
-              <div className="flex-1 text-sm text-fg/65 leading-snug">
-                <div className="uppercase tracking-[0.22em] text-[0.62rem] font-bold text-accent mb-2">
-                  Your friend code
-                </div>
-                <div className="font-grotesk font-bold text-fg text-[1.8rem] tracking-[-0.02em] leading-none">
-                  48C2
-                </div>
-                <p className="mt-3 text-fg/50 text-[0.85rem] max-w-[220px]">
-                  Share it, and anyone can split with you in one tap.
-                </p>
-              </div>
-            </div>
-          </div>
-          <div className="sc-image lg:col-span-6 lg:col-start-7 relative z-10 order-1 lg:order-2">
-            <div className="relative mx-auto w-full max-w-[460px] h-[520px] flex items-center justify-center">
-              <div
-                className="absolute -inset-10 blur-3xl opacity-60 -z-10"
-                style={{
-                  background:
-                    "radial-gradient(circle at 50% 30%, rgba(255,124,97,0.55), transparent 65%)",
-                }}
-              />
-
-              {/* Dashed connection line between the two phones */}
-              <svg
-                aria-hidden
-                className="absolute inset-0 w-full h-full pointer-events-none z-0"
-                viewBox="0 0 460 520"
-                fill="none"
-              >
-                <path
-                  d="M 140 300 C 200 360, 260 360, 320 300"
-                  stroke="rgb(255,124,97)"
-                  strokeWidth="1.6"
-                  strokeDasharray="4 6"
-                  strokeLinecap="round"
-                  opacity="0.55"
-                />
-              </svg>
-
-              {(["friends", "groups"] as const).map((v, i) => {
-                const isFront = frontPhone === v;
-                const baseRot = v === "friends" ? -9 : 8;
-                const activeRot = v === "friends" ? -4 : 4;
-                return (
-                  <button
-                    key={v}
-                    type="button"
-                    onClick={() => setFrontPhone(v)}
-                    aria-label={
-                      isFront ? `${v} screen in front` : `Bring ${v} screen to front`
-                    }
-                    className="absolute cursor-pointer focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent rounded-[1.75rem] transition-[transform,opacity,filter] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]"
-                    style={{
-                      width: isFront ? "58%" : "50%",
-                      left: v === "friends" ? "6%" : undefined,
-                      right: v === "groups" ? "6%" : undefined,
-                      top: isFront ? "8%" : "18%",
-                      transform: `rotate(${isFront ? activeRot : baseRot}deg)`,
-                      opacity: isFront ? 1 : 0.85,
-                      filter: isFront ? "none" : "saturate(0.85)",
-                      zIndex: isFront ? 20 : 5,
-                    }}
-                  >
-                    <Phone variant={v} />
-                  </button>
-                );
-              })}
-
-              {/* Floating "friend request accepted" pill */}
-              <span
-                aria-hidden
-                className="absolute top-[4%] right-[4%] z-30 bg-ink text-cream rounded-full px-3.5 py-1.5 text-[0.62rem] uppercase tracking-[0.22em] font-bold shadow-[0_10px_30px_-10px_rgba(0,0,0,0.6)] flex items-center gap-2 rotate-6"
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-                Friend joined
-              </span>
+                  </li>
+                ))}
+              </ol>
             </div>
           </div>
         </div>
       </div>
 
     </section>
+  );
+}
+
+/**
+ * Editorial chapter mark — a numbered, hairline-ruled section label that
+ * starts each block in the showcase. Acts like a magazine chapter heading.
+ */
+function ChapterMark({
+  num,
+  label,
+  tone = "dark",
+}: {
+  num: string;
+  label: string;
+  tone?: "dark" | "light";
+}) {
+  const text = tone === "dark" ? "text-cream/55" : "text-ink/55";
+  const rule = tone === "dark" ? "bg-cream/25" : "bg-ink/25";
+  return (
+    <div className="flex items-center gap-4 text-[0.7rem] uppercase tracking-[0.3em] font-semibold">
+      <span className={clsx("font-grotesk font-bold tabular-nums", text)}>
+        § {num}
+      </span>
+      <span aria-hidden className={clsx("h-px w-12 lg:w-16", rule)} />
+      <span className={text}>{label}</span>
+    </div>
+  );
+}
+
+/**
+ * Deterministic "looks real" QR code. A 25×25 module grid with the three
+ * finder patterns at the corners, timing rails, and a seeded pseudo-random
+ * fill for the data region. It does not encode anything — if you scan it,
+ * your camera will tell you it's invalid, which is exactly what we want for
+ * a marketing visual that shouldn't lead anywhere yet.
+ */
+function FakeQR() {
+  const n = 25;
+  const bits: boolean[][] = [];
+  let seed = 0x1a2b3c;
+  const rand = () => {
+    seed = (seed * 9301 + 49297) % 233280;
+    return seed / 233280;
+  };
+  for (let y = 0; y < n; y++) {
+    bits[y] = [];
+    for (let x = 0; x < n; x++) {
+      bits[y][x] = rand() > 0.52;
+    }
+  }
+  // Three 7×7 finder patterns (TL, TR, BL)
+  const finders: [number, number][] = [
+    [0, 0],
+    [n - 7, 0],
+    [0, n - 7],
+  ];
+  finders.forEach(([fx, fy]) => {
+    for (let dy = 0; dy < 7; dy++) {
+      for (let dx = 0; dx < 7; dx++) {
+        const onRing = dy === 0 || dy === 6 || dx === 0 || dx === 6;
+        const inCenter = dy >= 2 && dy <= 4 && dx >= 2 && dx <= 4;
+        bits[fy + dy][fx + dx] = onRing || inCenter;
+      }
+    }
+    // White separator ring around the finder
+    for (let dy = -1; dy <= 7; dy++) {
+      for (let dx = -1; dx <= 7; dx++) {
+        if (dy === -1 || dy === 7 || dx === -1 || dx === 7) {
+          const yy = fy + dy;
+          const xx = fx + dx;
+          if (yy >= 0 && yy < n && xx >= 0 && xx < n) {
+            if (!(dy >= 0 && dy <= 6 && dx >= 0 && dx <= 6)) {
+              bits[yy][xx] = false;
+            }
+          }
+        }
+      }
+    }
+  });
+  // Timing rails on row 6 and col 6
+  for (let i = 8; i < n - 8; i++) {
+    bits[6][i] = i % 2 === 0;
+    bits[i][6] = i % 2 === 0;
+  }
+  // Small alignment block near bottom-right
+  const ax = n - 5;
+  const ay = n - 5;
+  for (let dy = 0; dy < 5; dy++) {
+    for (let dx = 0; dx < 5; dx++) {
+      const onRing = dy === 0 || dy === 4 || dx === 0 || dx === 4;
+      const inCenter = dy === 2 && dx === 2;
+      bits[ay + dy][ax + dx] = onRing || inCenter;
+    }
+  }
+
+  return (
+    <svg
+      viewBox={`0 0 ${n} ${n}`}
+      className="w-full h-full"
+      shapeRendering="crispEdges"
+      aria-hidden
+    >
+      {bits.map((row, y) =>
+        row.map(
+          (on, x) =>
+            on && (
+              <rect
+                key={`${x}-${y}`}
+                x={x}
+                y={y}
+                width={1}
+                height={1}
+                fill="#0E0E0E"
+              />
+            ),
+        ),
+      )}
+    </svg>
   );
 }

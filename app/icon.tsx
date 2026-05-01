@@ -1,15 +1,13 @@
 import { ImageResponse } from "next/og";
-import { readFile } from "fs/promises";
-import { join } from "path";
 
+export const runtime = "edge";
 export const size = { width: 64, height: 64 };
 export const contentType = "image/png";
 
-export default async function Icon() {
-  const logoPath = join(process.cwd(), "public", "ante-logo.png");
-  const logoBuffer = await readFile(logoPath);
-  const logoBase64 = `data:image/png;base64,${logoBuffer.toString("base64")}`;
-
+// Favicon for Chrome / Safari tabs. We bake rounded corners directly into
+// the PNG (transparent outer corners + ink squircle background + centered
+// logo) so the tab shows a rounded chip instead of a flat square.
+export default function Icon() {
   return new ImageResponse(
     (
       <div
@@ -19,9 +17,27 @@ export default async function Icon() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
+          background: "transparent",
         }}
       >
-        <img src={logoBase64} width={64} height={64} alt="" />
+        <div
+          style={{
+            width: 64,
+            height: 64,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "#FFFFFF",
+            borderRadius: 18,
+          }}
+        >
+          <img
+            src="https://framerusercontent.com/images/8ziC1H7zLZIh36Br3ZlUaplUabg.png"
+            width={48}
+            height={48}
+            alt=""
+          />
+        </div>
       </div>
     ),
     size,

@@ -1,87 +1,56 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { gsap } from "gsap";
+import { AnimatePresence, motion } from "motion/react";
 import { ClawReveal } from "@/components/ClawReveal";
 import { Phone } from "@/components/Phone";
 import { Arrow } from "@/components/icons";
 import { Magnetic } from "@/components/Magnetic";
-import { PHONE_VARIANTS, PREMIUM_VARIANTS } from "@/lib/images";
-import { track } from "@/lib/analytics";
+import { PHONE_VARIANTS, PREMIUM_VARIANTS, screenImageSrc } from "@/lib/images";
+import type { ScreenVariant } from "@/components/Screen";
+import { Screen } from "@/components/Screen";
+import { track, useSectionViewed } from "@/lib/analytics";
 
-const START_PHONE = 9;
-// The carousel renders three back-to-back copies of PHONE_VARIANTS so we
-// can always navigate in either direction without hitting an edge. The
-// active index lives in the *middle* copy; once it drifts into the
-// leading or trailing copy we silently teleport it back after the visible
-// transition settles. From the user's perspective the track is infinite.
-const COPIES = 3;
+const CODED_VARIANTS = new Set<ScreenVariant>();
+
+const START_PHONE = 8;
+const prefersReducedMotion = () =>
+  window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 export function Hero() {
+  const sectionRef = useSectionViewed<HTMLElement>("hero");
   const subRef = useRef<HTMLParagraphElement>(null);
   const ctaRef = useRef<HTMLDivElement>(null);
 
   const viewportRef = useRef<HTMLDivElement>(null); // outer overflow-hidden box
   const trackRef = useRef<HTMLDivElement>(null);    // inner flex track
   const phonesRef = useRef<(HTMLDivElement | null)[]>([]);
-
-  const n = PHONE_VARIANTS.length;
-  const rendered = useMemo(
-    () => Array.from({ length: COPIES }, () => PHONE_VARIANTS).flat(),
-    [],
-  );
-
-  const [activeIdx, setActiveIdx] = useState(n + START_PHONE); // middle copy
+  const [activeIdx, setActiveIdx] = useState(START_PHONE);
   const [offset, setOffset] = useState(0);
-  const [paused, setPaused] = useState(false);
-  // When true, the track transitions smoothly. Flipped off for one frame
-  // during the seamless-loop teleport so the snap isn't visible.
-  const [animate, setAnimate] = useState(true);
-
-  const baseIdx = ((activeIdx % n) + n) % n;
-
-  /**
-   * Single choke-point for advancing the carousel. Every user-triggered
-   * path (prev/next/drag/wheel/dot/tap/auto) routes through here so we
-   * get a single `hero_carousel_advanced` event stream with a uniform
-   * `via` property and accurate from/to indices.
-   */
-  const advance = (delta: number, via: string) => {
-    setActiveIdx((prev) => {
-      const next = prev + delta;
-      track("hero_carousel_advanced", {
-        via,
-        from_idx: prev,
-        to_idx: next,
-        base_to_idx: ((next % n) + n) % n,
-        direction: delta > 0 ? "forward" : delta < 0 ? "backward" : "none",
-      });
-      return next;
-    });
-  };
-
-  const goToVariant = (variantIdx: number, via: string) => {
-    setActiveIdx((prev) => {
-      const next = n + variantIdx;
-      track("hero_carousel_advanced", {
-        via,
-        from_idx: prev,
-        to_idx: next,
-        base_to_idx: variantIdx,
-        direction: next > prev ? "forward" : next < prev ? "backward" : "none",
-      });
-      return next;
-    });
-  };
+  const [hasCenteredTrack, setHasCenteredTrack] = useState(false);
+  const [lightbox, setLightbox] = useState<ScreenVariant | null>(null);
 
   // Hero entrance fade-ins — wait for the claw swipes to finish drawing so
   // the CTA doesn't clash with the headline animation.
   useEffect(() => {
+    if (prefersReducedMotion()) {
+      [subRef.current, ctaRef.current].forEach((el) => {
+        if (!el) return;
+        el.style.opacity = "1";
+        el.style.transform = "translateY(0)";
+      });
+      return;
+    }
+
     const tl = gsap.timeline({ defaults: { ease: "expo.out" } });
     if (subRef.current)
-      tl.fromTo(subRef.current, { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.9 }, 1.3);
+      tl.fromTo(subRef.current, { y: 14, opacity: 0 }, { y: 0, opacity: 1, duration: 0.52 }, 0.42);
     if (ctaRef.current)
-      tl.fromTo(ctaRef.current, { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.9 }, 1.6);
+      tl.fromTo(ctaRef.current, { y: 14, opacity: 0 }, { y: 0, opacity: 1, duration: 0.52 }, 0.54);
+    return () => {
+      tl.kill();
+    };
   }, []);
 
   // Compute the translateX needed to center phone `idx` inside the viewport
@@ -97,6 +66,7 @@ export function Hero() {
   // Re-center when activeIdx changes or on resize
   useLayoutEffect(() => {
     setOffset(computeOffset(activeIdx));
+    setHasCenteredTrack(true);
   }, [activeIdx]);
 
   useEffect(() => {
@@ -108,57 +78,27 @@ export function Hero() {
     return () => ro.disconnect();
   }, [activeIdx]);
 
-  // Seamless-loop teleport: once activeIdx drifts outside the middle
-  // copy, wait for the visible transition to finish, then silently shift
-  // activeIdx by ±n so the user never reaches an edge. `animate` is
-  // disabled for the teleport frame so the jump isn't animated.
-  useEffect(() => {
-    if (activeIdx >= n && activeIdx < 2 * n) return;
-    const shift = activeIdx < n ? n : -n;
-    const timer = setTimeout(() => {
-      // The silent teleport itself: not a user-visible advance, but a
-      // useful signal for "are users actually circling the loop?"
-      track("hero_carousel_wrapped", {
-        from_idx: activeIdx,
-        shift,
-        base_idx: ((activeIdx % n) + n) % n,
-      });
-      setAnimate(false);
-      setActiveIdx((i) => i + shift);
-      // Next two rAFs: one to let React commit the non-animated position,
-      // the second to re-enable animation for the user's next interaction.
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => setAnimate(true));
-      });
-    }, 720);
-    return () => clearTimeout(timer);
-  }, [activeIdx, n]);
-
-  // Auto-advance every 3.5s, pause on hover/drag/interaction
-  useEffect(() => {
-    if (paused) return;
-    if (typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const id = setInterval(() => {
-      advance(1, "auto");
-    }, 3500);
-    return () => clearInterval(id);
-  }, [paused]);
-
-  // Drag-to-swipe: click + drag more than 40px → advance or rewind
+  // Drag-to-swipe: click + drag more than 40px → advance or rewind.
+  // A short tap (<40px) is treated as a click — expand the active phone,
+  // or center the tapped one. Click detection lives here because the
+  // viewport uses setPointerCapture, which would otherwise swallow the
+  // native click events on the inner phone elements.
   useEffect(() => {
     const viewport = viewportRef.current;
     if (!viewport) return;
     let isDown = false;
     let startX = 0;
     let draggedDistance = 0;
+    let downTarget: HTMLElement | null = null;
 
     const onDown = (e: PointerEvent) => {
       isDown = true;
       startX = e.clientX;
       draggedDistance = 0;
+      // Record the real target before setPointerCapture redirects events.
+      downTarget = e.target as HTMLElement;
       viewport.setPointerCapture?.(e.pointerId);
       viewport.style.cursor = "grabbing";
-      setPaused(true);
     };
     const onMove = (e: PointerEvent) => {
       if (!isDown) return;
@@ -173,10 +113,32 @@ export function Hero() {
       viewport.style.cursor = "";
       const THRESHOLD = 40;
       if (Math.abs(draggedDistance) > THRESHOLD) {
-        advance(draggedDistance < 0 ? 1 : -1, "drag");
+        if (draggedDistance < 0) {
+          setActiveIdx((i) => Math.min(i + 1, PHONE_VARIANTS.length - 1));
+        } else {
+          setActiveIdx((i) => Math.max(i - 1, 0));
+        }
+        return;
+      }
+      // Snap back from any tiny drag
+      setOffset(computeOffset(activeIdx));
+      // Tap → expand or center. Use the target captured on pointerdown
+      // (setPointerCapture rewrites e.target on the way up).
+      const phoneEl = downTarget?.closest(
+        "[data-phone-idx]",
+      ) as HTMLElement | null;
+      downTarget = null;
+      if (!phoneEl) return;
+      const idx = Number(phoneEl.dataset.phoneIdx);
+      if (Number.isNaN(idx)) return;
+      if (idx === activeIdx) {
+        track("hero_phone_lightbox_opened", {
+          screen_variant: PHONE_VARIANTS[idx],
+          screen_index: idx,
+        });
+        setLightbox(PHONE_VARIANTS[idx]);
       } else {
-        // Snap back
-        setOffset(computeOffset(activeIdx));
+        goTo(idx);
       }
     };
     viewport.addEventListener("pointerdown", onDown);
@@ -206,10 +168,10 @@ export function Hero() {
       if (cooldown) return;
       acc += d;
       if (Math.abs(acc) > 45) {
-        advance(acc > 0 ? 1 : -1, "wheel");
+        if (acc > 0) setActiveIdx((i) => Math.min(i + 1, PHONE_VARIANTS.length - 1));
+        else setActiveIdx((i) => Math.max(i - 1, 0));
         acc = 0;
         cooldown = true;
-        setPaused(true);
         setTimeout(() => {
           cooldown = false;
         }, 400);
@@ -219,45 +181,65 @@ export function Hero() {
     return () => viewport.removeEventListener("wheel", onWheel);
   }, []);
 
-  const prev = () => {
-    setPaused(true);
-    advance(-1, "prev");
+  const goTo = (i: number) => {
+    const nextIdx = Math.max(0, Math.min(PHONE_VARIANTS.length - 1, i));
+    setActiveIdx(nextIdx);
+    track("hero_phone_changed", {
+      screen_variant: PHONE_VARIANTS[nextIdx],
+      screen_index: nextIdx,
+    });
   };
-  const next = () => {
-    setPaused(true);
-    advance(1, "next");
-  };
-  // Dot click: jump to the equivalent position in the middle copy so the
-  // teleport never triggers from a direct selection.
-  const jumpTo = (variantIdx: number) => {
-    setPaused(true);
-    goToVariant(variantIdx, "dot");
-  };
+  const prev = () => goTo(activeIdx - 1);
+  const next = () => goTo(activeIdx + 1);
+
+  // Lightbox: lock scroll and wire Escape-to-close while open
+  useEffect(() => {
+    if (!lightbox) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setLightbox(null);
+    };
+    document.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [lightbox]);
 
   return (
-    <section
-      data-section="hero"
-      className="relative bg-canvas pt-24 lg:pt-28 pb-16 lg:pb-24 overflow-hidden"
-      aria-label="Hero"
-    >
+    <section ref={sectionRef} className="relative bg-surface pt-24 lg:pt-28 pb-16 lg:pb-24 overflow-hidden">
       <div className="mx-auto max-w-[1440px] px-6 lg:px-10 relative">
         <h1 className="mt-2 lg:mt-4">
           <ClawReveal />
         </h1>
 
         <div className="mt-8 lg:mt-10 flex flex-col items-center text-center gap-7">
-          <p ref={subRef} className="text-lg md:text-xl text-fg/60 max-w-md leading-[1.55]">
-            Scan the receipt. Claim your items. Settle before you leave.
+          <p
+            ref={subRef}
+            className="text-lg md:text-xl text-body/70 max-w-md leading-[1.5]"
+            style={{ opacity: 0, transform: "translateY(14px)" }}
+          >
+            Split the check and pay it in one app. No chasing payments after
+            the meal.
           </p>
 
-          <div ref={ctaRef} className="flex flex-col items-center w-full sm:w-auto max-w-[340px] sm:max-w-none">
+          <div
+            ref={ctaRef}
+            className="flex items-stretch sm:items-center w-full sm:w-auto max-w-[340px] sm:max-w-none"
+            style={{ opacity: 0, transform: "translateY(14px)" }}
+          >
             <Magnetic strength={0.3} className="w-full sm:w-auto">
               <Link
                 href="/waitlist"
                 onClick={() =>
-                  track("cta_join_waitlist_clicked", { surface: "hero" })
+                  track("cta_clicked", {
+                    cta_name: "join_waitlist",
+                    location: "hero",
+                    target_path: "/waitlist",
+                  })
                 }
-                className="btn-primary justify-center whitespace-nowrap w-full sm:w-[18rem] text-[1.05rem]! py-[1.2rem]! px-[2.1rem]!"
+                className="btn-primary justify-center whitespace-nowrap w-full sm:w-[18rem] !text-[1.05rem] !py-[1.2rem] !px-[2.1rem]"
               >
                 Join the Waitlist
                 <Arrow className="arrow" />
@@ -267,13 +249,14 @@ export function Hero() {
         </div>
       </div>
 
-      {/* Phone carousel — infinite loop via tripled track + silent teleport */}
+      {/* Phone carousel — deterministic transform-based */}
       <div className="mt-14 lg:mt-20 relative">
-        {/* Prev / Next chevrons — no longer disabled at boundaries */}
+        {/* Prev / Next chevrons */}
         <button
           onClick={prev}
+          disabled={activeIdx === 0}
           aria-label="Previous screen"
-          className="hidden md:flex absolute left-4 lg:left-10 top-1/2 -translate-y-1/2 z-20 w-12 h-12 rounded-full bg-fg text-canvas items-center justify-center shadow-lg hover:scale-110 hover:bg-accent hover:text-white transition-all duration-300"
+          className="hidden md:flex absolute left-4 lg:left-10 top-1/2 -translate-y-1/2 z-20 w-12 h-12 rounded-full bg-body text-surface items-center justify-center shadow-lg hover:scale-110 hover:bg-accent hover:text-white transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-body disabled:hover:scale-100"
         >
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
             <path d="M9.5 2 L4 7 L9.5 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -281,40 +264,35 @@ export function Hero() {
         </button>
         <button
           onClick={next}
+          disabled={activeIdx === PHONE_VARIANTS.length - 1}
           aria-label="Next screen"
-          className="hidden md:flex absolute right-4 lg:right-10 top-1/2 -translate-y-1/2 z-20 w-12 h-12 rounded-full bg-fg text-canvas items-center justify-center shadow-lg hover:scale-110 hover:bg-accent hover:text-white transition-all duration-300"
+          className="hidden md:flex absolute right-4 lg:right-10 top-1/2 -translate-y-1/2 z-20 w-12 h-12 rounded-full bg-body text-surface items-center justify-center shadow-lg hover:scale-110 hover:bg-accent hover:text-white transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-body disabled:hover:scale-100"
         >
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
             <path d="M4.5 2 L10 7 L4.5 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
 
-        {/* Viewport — overflow hidden, pointer events captured here for drag */}
+        {/* Viewport — only horizontal overflow is clipped so the phone's
+            hover-lift can escape vertically without being cropped. */}
         <div
           ref={viewportRef}
-          className="overflow-hidden cursor-grab select-none touch-pan-y"
-          style={{ touchAction: "pan-y" }}
-          onMouseEnter={() => {
-            setPaused(true);
-            track("hero_carousel_paused", { reason: "hover" });
-          }}
-          onMouseLeave={() => {
-            setPaused(false);
-            track("hero_carousel_resumed", { reason: "hover" });
-          }}
+          className="overflow-x-hidden cursor-grab select-none touch-pan-y"
+          style={{ touchAction: "pan-y", overflowY: "visible" }}
         >
           <div
             ref={trackRef}
-            className="flex items-start gap-5 lg:gap-6 py-4"
+            className="flex items-start gap-5 lg:gap-6 py-6 md:py-8"
             style={{
               transform: `translate3d(${offset}px, 0, 0)`,
-              transition: animate
-                ? "transform 0.7s cubic-bezier(0.22, 1, 0.36, 1)"
+              opacity: hasCenteredTrack ? 1 : 0,
+              transition: hasCenteredTrack
+                ? "transform 0.55s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease-out"
                 : "none",
               willChange: "transform",
             }}
           >
-            {rendered.map((variant, i) => {
+            {PHONE_VARIANTS.map((variant, i) => {
               const isActive = i === activeIdx;
               const isPremium = PREMIUM_VARIANTS.has(variant);
               return (
@@ -323,27 +301,15 @@ export function Hero() {
                   ref={(el) => {
                     phonesRef.current[i] = el;
                   }}
-                  onClick={() => {
-                    setPaused(true);
-                    setActiveIdx((prev) => {
-                      track("hero_carousel_advanced", {
-                        via: "tap",
-                        from_idx: prev,
-                        to_idx: i,
-                        base_to_idx: ((i % n) + n) % n,
-                        direction:
-                          i > prev ? "forward" : i < prev ? "backward" : "none",
-                      });
-                      return i;
-                    });
-                  }}
-                  className="relative shrink-0 cursor-pointer"
+                  data-phone-idx={i}
+                  aria-label={isActive ? `Expand ${variant} screen` : `Show ${variant} screen`}
+                  className="relative flex-shrink-0"
                   style={{
                     width: "clamp(175px, 15vw, 215px)",
                     opacity: isActive ? 1 : 0.4,
                     transition: "opacity 0.5s ease",
+                    cursor: isActive ? "zoom-in" : "pointer",
                   }}
-                  aria-hidden={!isActive}
                 >
                   {isPremium && (
                     <span
@@ -356,10 +322,10 @@ export function Hero() {
                       }}
                     />
                   )}
-                  <Phone variant={variant} tilt={isActive} />
+                  <Phone variant={variant} />
                   {isPremium && (
-                    <span className="absolute -top-2 -right-2 z-10 bg-accent text-white text-[0.58rem] uppercase tracking-[0.24em] font-bold px-2 py-[5px] rounded-full shadow-[0_4px_10px_rgba(255,124,97,0.35)] select-none">
-                      Pro
+                    <span className="absolute -top-2 -right-2 z-10 bg-accent text-white text-[0.58rem] uppercase tracking-[0.22em] font-bold px-2.5 py-[5px] rounded-full shadow-[0_4px_10px_rgba(255,124,97,0.35)] select-none whitespace-nowrap">
+                      Pro · Coming later
                     </span>
                   )}
                 </div>
@@ -368,34 +334,100 @@ export function Hero() {
           </div>
         </div>
 
-        <div className="mx-auto max-w-[1440px] px-6 lg:px-10 mt-10 flex flex-col md:flex-row items-center md:justify-between gap-4 md:gap-6 text-[0.72rem] uppercase tracking-[0.28em] text-fg/40 font-semibold">
-          <span className="hidden md:inline order-1">Drag, wheel, or click ←→</span>
-          <div
-            className="flex items-center gap-2 flex-wrap justify-center max-w-full order-2"
-            role="tablist"
-            aria-label="Screens"
-          >
+        <div className="mx-auto max-w-[1440px] px-6 lg:px-10 mt-10 flex flex-col md:flex-row items-center md:justify-between gap-4 md:gap-6 text-[0.72rem] uppercase tracking-[0.28em] text-body/40 font-semibold">
+          <span className="hidden md:inline order-1">Drag, wheel, click · tap to zoom</span>
+          <div className="flex items-center gap-2 flex-wrap justify-center max-w-full order-2">
             {PHONE_VARIANTS.map((_, i) => (
               <button
                 key={i}
-                onClick={() => jumpTo(i)}
+                onClick={() => goTo(i)}
                 className="h-1.5 rounded-full transition-all duration-500"
                 style={{
-                  width: i === baseIdx ? 28 : 6,
-                  background: i === baseIdx ? "rgb(255,124,97)" : "var(--line-strong)",
+                  width: i === activeIdx ? 28 : 6,
+                  background: i === activeIdx ? "rgb(255,124,97)" : "rgb(var(--line) / 0.2)",
                 }}
                 aria-label={`Jump to screen ${i + 1}`}
-                aria-selected={i === baseIdx}
-                role="tab"
               />
             ))}
           </div>
           <span className="order-3">
-            {(baseIdx + 1).toString().padStart(2, "0")} /{" "}
-            {n.toString().padStart(2, "0")}
+            {(activeIdx + 1).toString().padStart(2, "0")} /{" "}
+            {PHONE_VARIANTS.length.toString().padStart(2, "0")}
           </span>
         </div>
       </div>
+
+      <AnimatePresence>
+        {lightbox && (
+          <motion.div
+            key="phone-lightbox"
+            role="dialog"
+            aria-modal="true"
+            aria-label={`${lightbox} screen, expanded`}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-6"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+            onClick={() => {
+              track("hero_phone_lightbox_closed", {
+                screen_variant: lightbox,
+                method: "backdrop",
+              });
+              setLightbox(null);
+            }}
+            style={{
+              backgroundColor: "rgba(14,14,14,0.82)",
+              backdropFilter: "blur(10px)",
+              WebkitBackdropFilter: "blur(10px)",
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 12 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.92, opacity: 0, y: 8 }}
+              transition={{ type: "spring", stiffness: 240, damping: 26 }}
+              className="relative"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {CODED_VARIANTS.has(lightbox) ? (
+                <div
+                  className="bg-white rounded-[2rem] shadow-[0_60px_120px_-40px_rgba(14,14,14,0.75)] overflow-hidden"
+                  style={{
+                    width: "min(86vw, calc(86vh * 9 / 19.5))",
+                    aspectRatio: "9 / 19.5",
+                  }}
+                >
+                  <Screen variant={lightbox} />
+                </div>
+              ) : (
+                <img
+                  src={screenImageSrc(lightbox)}
+                  alt={`Tabby ${lightbox} screen`}
+                  draggable={false}
+                  className="block max-h-[86vh] max-w-[86vw] w-auto h-auto rounded-[2rem] shadow-[0_60px_120px_-40px_rgba(14,14,14,0.75)] select-none"
+                />
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  track("hero_phone_lightbox_closed", {
+                    screen_variant: lightbox,
+                    method: "button",
+                  });
+                  setLightbox(null);
+                }}
+                aria-label="Close"
+                className="absolute -top-3 -right-3 w-10 h-10 rounded-full bg-white text-ink flex items-center justify-center shadow-[0_10px_24px_-8px_rgba(14,14,14,0.5)] hover:scale-110 transition-transform"
+              >
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
+                  <path d="M2 2 L12 12 M12 2 L2 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </section>
   );
 }
