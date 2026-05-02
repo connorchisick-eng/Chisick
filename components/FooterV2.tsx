@@ -238,39 +238,17 @@ export function FooterV2() {
         </div>
       </div>
 
-      {/* Marquee + brand row + copyright. Small positive margin so the
-          marquee sits clearly below the wordmark's descender / period. */}
-      <div className="relative mx-auto max-w-[1560px] px-6 lg:px-12 mt-2 lg:mt-4 pb-0 z-10">
-        <div className="relative border-y border-white/5 overflow-hidden py-3 -mx-6 lg:-mx-12">
-          <div className="flex animate-marquee whitespace-nowrap">
-            {Array.from({ length: 2 }).map((_, rep) => (
-              <div key={rep} className="flex items-center gap-10 pr-10 shrink-0">
-                {Array.from({ length: 14 }).map((_, i) => (
-                  <span
-                    key={`${rep}-${i}`}
-                    className="flex items-center gap-10 text-cream/30"
-                  >
-                    <span
-                      className="font-grotesk italic font-medium text-cream/35 tracking-[-0.02em]"
-                      style={{ fontSize: "0.95rem" }}
-                    >
-                      enjoy the meal · not the math
-                    </span>
-                  </span>
-                ))}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="py-5 sm:py-6 pb-9 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 text-sm text-cream/50">
+      {/* Brand row + copyright. Single line of housekeeping under the
+          wordmark — no marquee strip, no duplicated taglines. */}
+      <div className="relative mx-auto max-w-[1560px] px-6 lg:px-12 mt-4 lg:mt-6 pb-0 z-10">
+        <div className="border-t border-white/5 py-6 sm:py-7 pb-9 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 text-sm text-cream/50">
           <div className="flex items-center gap-3">
             <span className="relative w-7 h-7 rounded-[30%] overflow-hidden bg-white grid place-items-center shadow-[0_2px_6px_rgba(0,0,0,0.25)]">
               <Image src={LOGO} alt="Tabby" width={18} height={18} />
             </span>
             <span className="text-cream/55 text-[0.82rem] sm:text-sm">© 2026 Tabby. All rights reserved.</span>
           </div>
-          <span className="font-grotesk italic text-cream/40 text-[0.82rem] sm:text-sm">
+          <span className="font-grotesk italic text-cream/45 text-[0.82rem] sm:text-sm">
             enjoy the meal — not the math.
           </span>
         </div>
