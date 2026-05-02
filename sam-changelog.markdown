@@ -4,6 +4,23 @@ Hey. Quick rundown of what I changed today, in plain English. No tech jargon.
 
 ---
 
+## "The Principle" + footer — simpler, less clutter
+
+Two cleanups in one pass:
+
+**The Principle section** (the "Don't pay for their wagyu when you had water." line that flips through different food pairs)
+
+- The strikethrough crossing out the fancy word used to be a wavy, hand-drawn squiggle. It was distracting and wobbled with the type. Now it's a **single clean line** that draws across in a quick, confident motion.
+- Stripped out the surrounding decoration: the giant ghost quote-mark behind the headline, the faint ledger-paper pinstripes, the little 01/06 pip counter under the headline, the "— the Tabby principle" signature line. All gone.
+- Result: **just the eyebrow ("§ The Principle"), the headline, and breathing room.** The line itself is the moment — no scaffolding around it.
+
+**The very bottom of the footer**
+
+- Removed the **scrolling ticker** that ran "enjoy the meal · not the math" across the page. It was repeating the tagline that already sits in the bottom row right below it, so we were saying the same thing twice within an inch of each other.
+- The bottom now has a single quiet hairline rule, the Tabby mark + copyright on the left, and the "enjoy the meal — not the math." tagline once on the right. That's it.
+
+---
+
 ## Mobile menu close control
 
 On phones, opening the menu (the burger icon in the top-right) used to slide a full-screen panel over everything — but there was **no visible way to close it**. The little "X" button was hiding behind the panel, so tapping it did nothing. Felt broken.
