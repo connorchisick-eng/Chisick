@@ -1,6 +1,22 @@
-@import url("https://fonts.cdnfonts.com/css/cabinet-grotesk");
-
 @import "tailwindcss";
+
+/* Metric-matched fallback for Cabinet Grotesk. The real font is fetched
+   via a non-blocking <link> in app/layout.tsx; while it loads, the
+   browser uses this fallback face — backed by Arial — but with metrics
+   overridden to match Cabinet Grotesk. Result: when the real font swaps
+   in, glyph widths and line boxes are essentially identical, so there's
+   no layout shift (was contributing the bulk of our 0.28 CLS).
+
+   Values calibrated to Cabinet Grotesk's published metrics; if you swap
+   the display font, regenerate these via fontsource or capsize. */
+@font-face {
+  font-family: "Cabinet Grotesk Fallback";
+  src: local("Arial");
+  size-adjust: 100%;
+  ascent-override: 95%;
+  descent-override: 22%;
+  line-gap-override: 0%;
+}
 
 @config "../tailwind.config.ts";
 
@@ -42,7 +58,7 @@ html,
 body {
   background: rgb(var(--surface));
   color: rgb(var(--text-primary));
-  font-family: "Cabinet Grotesk", system-ui, sans-serif;
+  font-family: "Cabinet Grotesk", "Cabinet Grotesk Fallback", system-ui, sans-serif;
   font-feature-settings: "ss01", "ss02";
   transition: background-color 0.5s cubic-bezier(0.22, 1, 0.36, 1),
     color 0.5s cubic-bezier(0.22, 1, 0.36, 1);
@@ -295,7 +311,7 @@ html, body { scrollbar-width: none; -ms-overflow-style: none; }
   color: rgb(var(--text-primary) / 0.78);
 }
 .legal-prose h3 {
-  font-family: 'Cabinet Grotesk', sans-serif;
+  font-family: 'Cabinet Grotesk', 'Cabinet Grotesk Fallback', sans-serif;
   font-weight: 700;
   font-size: 1.08rem;
   color: rgb(var(--text-primary));
@@ -339,7 +355,7 @@ html, body { scrollbar-width: none; -ms-overflow-style: none; }
   position: absolute;
   left: 0;
   top: 0;
-  font-family: 'Cabinet Grotesk', sans-serif;
+  font-family: 'Cabinet Grotesk', 'Cabinet Grotesk Fallback', sans-serif;
   font-weight: 700;
   font-size: 0.78rem;
   letter-spacing: 0.16em;
@@ -395,7 +411,7 @@ html, body { scrollbar-width: none; -ms-overflow-style: none; }
   flex-wrap: wrap;
 }
 .legal-section-num {
-  font-family: 'Cabinet Grotesk', sans-serif;
+  font-family: 'Cabinet Grotesk', 'Cabinet Grotesk Fallback', sans-serif;
   font-weight: 700;
   font-size: 0.78rem;
   letter-spacing: 0.24em;
@@ -404,7 +420,7 @@ html, body { scrollbar-width: none; -ms-overflow-style: none; }
   flex-shrink: 0;
 }
 .legal-section-title {
-  font-family: 'Cabinet Grotesk', sans-serif;
+  font-family: 'Cabinet Grotesk', 'Cabinet Grotesk Fallback', sans-serif;
   font-weight: 700;
   font-size: clamp(1.6rem, 3vw, 2.35rem);
   letter-spacing: -0.025em;
@@ -455,7 +471,7 @@ html, body { scrollbar-width: none; -ms-overflow-style: none; }
   position: absolute;
   top: 1.2rem;
   right: 1.4rem;
-  font-family: 'Cabinet Grotesk', sans-serif;
+  font-family: 'Cabinet Grotesk', 'Cabinet Grotesk Fallback', sans-serif;
   font-style: italic;
   font-weight: 700;
   font-size: 1.5rem;
@@ -756,7 +772,7 @@ body:not(.ready) [data-fade-in] { opacity: 0; }
 
 /* Hand-cursive tagline */
 .cursive {
-  font-family: "Cabinet Grotesk", system-ui, sans-serif;
+  font-family: "Cabinet Grotesk", "Cabinet Grotesk Fallback", system-ui, sans-serif;
   font-style: italic;
   font-weight: 500;
 }

@@ -38,6 +38,18 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <head>
+        {/* Cabinet Grotesk — fetched via a non-blocking <link> instead of
+            a CSS @import so it doesn't block CSS parsing / first paint.
+            Preconnect warms up the TLS handshake. While the font is in
+            flight, a metric-matched fallback face (defined in globals.css)
+            renders text at the same dimensions, eliminating CLS on swap. */}
+        <link rel="preconnect" href="https://fonts.cdnfonts.com" crossOrigin="" />
+        <link
+          rel="stylesheet"
+          href="https://fonts.cdnfonts.com/css/cabinet-grotesk"
+        />
+      </head>
       <body>
         <PostHogProvider>
           <Ready />

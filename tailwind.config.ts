@@ -20,7 +20,7 @@ const config: Config = {
         line: "rgb(var(--line) / <alpha-value>)",
       },
       fontFamily: {
-        grotesk: ["'Cabinet Grotesk'", "system-ui", "sans-serif"],
+        grotesk: ["'Cabinet Grotesk'", "'Cabinet Grotesk Fallback'", "system-ui", "sans-serif"],
       },
       fontSize: {
         "hero": ["clamp(4.5rem, 13.2vw, 14rem)", { lineHeight: "0.88", letterSpacing: "-0.04em" }],
