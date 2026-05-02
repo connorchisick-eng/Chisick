@@ -4,6 +4,80 @@ Hey. Quick rundown of what I changed today, in plain English. No tech jargon.
 
 ---
 
+## Speed score — fixed the big "layout jumping" issue
+
+Vercel's Speed Insights dashboard was flagging us with a **0.28 CLS score** (CLS = "how much the page jumps around as it loads"). Anything over 0.25 is "poor" — and ours was sitting right there. The other metrics (load time, time-to-interactive, server response) were all green. Just this one was bleeding red.
+
+Cause: our display font (Cabinet Grotesk — the bold italic one in the headlines) was being pulled in via a **slow CSS import from a third-party CDN**. While the page waited for it, every big headline was rendered with the laptop's default system font. Then the moment the real font finally arrived, every headline reflowed to a different width — and the whole page jumped.
+
+Fix:
+
+- **Stopped blocking the page on the font fetch.** It now downloads in parallel with the CSS instead of holding up the render.
+- **Added a "stunt double" font.** Defined a backup font that uses the user's local Arial but with the *exact* metrics of Cabinet Grotesk (height of letters, line spacing, etc.) baked in. So when the page renders before the real font has arrived, headlines are already at the correct dimensions. When the real font swaps in, nothing moves.
+
+Net effect: CLS should drop from 0.28 → under 0.1 (which is "good"), and the overall Speed Insights score should jump from 85 to 90+. Real-user data takes ~24 hours to repopulate.
+
+---
+
+## Help-agent chat — full visual redesign
+
+The "Ask Tabby" floating helper got a polish pass. Three changes:
+
+- **The button now uses the Tabby mascot** instead of the generic question-mark icon. The little green "live" dot still sits on the corner.
+- **The mascot is also baked into every assistant response** as a small avatar — so when Tabby replies, you see the mascot next to the message instead of just floating text.
+- **The chat panel itself was redesigned** to match the editorial feel of the rest of the site: ledger-paper hairlines in the background, a soft accent glow at the bottom, an oversized italic welcome headline, and the suggestion buttons are now numbered cards (01, 02, 03, 04) with a hairline that grows on hover. The composer (input box) has a pill-shaped design that lights up with an accent border when you start typing, and there's a real keyboard-style `↵` chip in the helper text below.
+- The "thinking" indicator is now three bouncing dots instead of one pulsing one — feels more characterful.
+
+Net effect: the chat reads like part of the site instead of a generic SaaS chat widget bolted on.
+
+---
+
+## "Don't pay for their caviar..." section — simplified
+
+Tightened the editorial pull-quote section that sits between the hero and "How it works":
+
+- Removed the "§ — The Principle" eyebrow label.
+- Removed the giant ghost quote mark behind the headline.
+- Removed the "02 / 06" pair counter and the "— the Tabby principle" signature underneath.
+- Removed the strikethrough animation that drew across "caviar" — the user felt it was distracting.
+- The flip animation between words ("caviar" → "truffle" → "lobster"...) is now a **typewriter effect**: backspaces the current word letter-by-letter, then types the next one in. Includes a blinking caret.
+
+Net effect: the section is now just the headline. Much cleaner. The word swap reads like Tabby is correcting itself in real time.
+
+---
+
+## Footer — pared down
+
+The footer was doing five jobs at once: a duplicate CTA, three nav columns, a giant wordmark, a scrolling marquee tagline, and copyright. The CTA already lives in its own dedicated section right above the footer — the duplicate was redundant.
+
+Now the footer is just three rows:
+
+1. Brand mark + tagline on the left, a single inline row of essential links on the right (Waitlist, How it works, FAQ, Privacy, Terms, Security).
+2. The big edge-bleeding `tabby.` wordmark — the only flourish kept, because it's the page's signature.
+3. Copyright line.
+
+Net effect: half the footer code, none of the noise, much faster to scan.
+
+---
+
+## "How it works" phone — fixed top getting clipped on laptops
+
+On laptops with shorter screens (~13" MacBooks), the top of the phone in the "How it works" sticky section was getting **partially hidden behind the navbar**. The cause was simple: the navbar is 104px tall but the section was only reserving 96px of clearance — so the phone's crown sat 8px behind the nav, and the nav's drop shadow visually clipped more.
+
+Fix: bumped the top padding of the sticky section to clear the navbar with comfortable breathing room (32px gap on laptops). Phone scales naturally to fit whatever space is left, so no awkward layout fights.
+
+---
+
+## BotID — bot protection on chat + waitlist
+
+Added Vercel BotID to the two endpoints that take real input: the help-agent chat (`/api/chat`) and the waitlist signup (`/api/waitlist`). Real visitors pass through invisibly; automated scripts and scrapers get a 403.
+
+What this changes for users: nothing visible. What it stops: bots burning AI Gateway tokens by spamming the chatbot, and junk emails getting blasted into the waitlist table.
+
+Heads-up — for full strength ("Deep Analysis"), flip on **Vercel BotID Deep Analysis** in the Vercel dashboard → Project → Firewall → Rules. It's a Pro/Enterprise feature and free until then runs in basic mode.
+
+---
+
 ## PostHog analytics — fixed in production
 
 PostHog wasn't actually collecting data on splittabby.com. The issue was a misconfigured setting on Vercel that was sending events to the wrong address (the PostHog *dashboard* instead of the *ingestion* endpoint) and also bypassing our ad-blocker-proof proxy.
