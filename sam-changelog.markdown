@@ -615,3 +615,11 @@ Verification: `pnpm exec tsc --noEmit` and `pnpm build` both pass.
 Verification: `pnpm exec tsc --noEmit` and `pnpm build` both pass.
 
 ---
+
+## 39. Fixed Vercel's frozen pnpm install
+
+- Matched the lockfile specifiers for `@opentelemetry/resources`, `@opentelemetry/sdk-node`, and `@posthog/ai` to the exact pinned versions already in `package.json`.
+- This fixes Vercel's `ERR_PNPM_OUTDATED_LOCKFILE` failure during `pnpm install --frozen-lockfile`.
+- Note: this cloud runner does not have Node/pnpm installed, so local install/build verification could not run here; the failure condition was verified directly against the manifest + lockfile mismatch from the Vercel log.
+
+---
