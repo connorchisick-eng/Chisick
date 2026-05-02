@@ -7,6 +7,7 @@ import { AnimatePresence, motion } from "motion/react";
 import posthog from "posthog-js";
 import { LOGO } from "@/lib/images";
 import { lengthBucket, track } from "@/lib/analytics";
+import { Arrow } from "@/components/icons";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
@@ -16,36 +17,6 @@ const SUGGESTIONS = [
   "Do my friends need the app?",
   "How much does it cost?",
 ];
-
-function QuestionIcon({ className = "" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 16 16" fill="none" className={className} aria-hidden>
-      <path
-        d="M5.4 5.6a2.6 2.6 0 1 1 4.3 2.05c-.95.7-1.7 1.25-1.7 2.45"
-        stroke="currentColor"
-        strokeWidth="1.7"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
-      <circle cx="8" cy="12.7" r="0.95" fill="currentColor" />
-    </svg>
-  );
-}
-
-function SendIcon({ className = "" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 14 14" fill="none" className={className} aria-hidden>
-      <path
-        d="M7 12V2M3 6l4-4 4 4"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
 
 function CloseIcon({ className = "" }: { className?: string }) {
   return (
@@ -232,9 +203,22 @@ export function HelpAgent() {
             <span
               className="relative inline-flex items-center gap-3 pl-3 pr-5 py-2.5 sm:py-3 rounded-full bg-ink text-cream shadow-[0_22px_52px_-14px_rgba(14,14,14,0.6)] group-hover:shadow-[0_28px_64px_-12px_rgba(255,124,97,0.5)] group-hover:-translate-y-0.5 transition-all duration-300 active:scale-[0.97]"
             >
-              <span className="relative inline-flex w-9 h-9 sm:w-10 sm:h-10 items-center justify-center rounded-full bg-accent text-cream shrink-0">
-                <QuestionIcon className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />
-                {/* live dot */}
+              <span className="relative inline-flex w-9 h-9 sm:w-10 sm:h-10 shrink-0">
+                {/* Mascot disc — overflow-hidden so the logo crops cleanly
+                    inside the circle. The live dot sits OUTSIDE this so the
+                    crop doesn't clip it. */}
+                <span className="relative w-full h-full overflow-hidden rounded-full bg-cream ring-1 ring-cream/20">
+                  <Image
+                    src={LOGO}
+                    alt=""
+                    width={40}
+                    height={40}
+                    className="w-full h-full object-contain"
+                    unoptimized
+                  />
+                </span>
+                {/* live dot — sibling of the clipped disc, not a child, so
+                    the rounded crop can't shave it off. */}
                 <span
                   aria-hidden
                   className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-[rgb(2,213,124)] ring-2 ring-ink"
@@ -260,47 +244,83 @@ export function HelpAgent() {
             exit={{ y: 24, opacity: 0, scale: 0.97 }}
             transition={{ type: "spring", stiffness: 290, damping: 28 }}
             data-lenis-prevent
-            className="fixed z-[60] bottom-3 right-3 left-3 sm:bottom-5 sm:right-5 sm:left-auto sm:w-[420px] sm:max-h-[min(660px,86vh)] h-[min(86dvh,720px)] sm:h-auto flex flex-col overflow-hidden bg-cream rounded-[24px] sm:rounded-[28px] shadow-[0_40px_100px_-20px_rgba(14,14,14,0.55)] border border-ink/10"
+            className="fixed z-[60] bottom-3 right-3 left-3 sm:bottom-5 sm:right-5 sm:left-auto sm:w-[440px] sm:max-h-[min(720px,88vh)] h-[min(88dvh,760px)] sm:h-auto flex flex-col overflow-hidden bg-surface-alt rounded-[26px] sm:rounded-[32px] shadow-[0_50px_120px_-24px_rgba(14,14,14,0.55),0_0_0_1px_rgba(14,14,14,0.06)]"
             style={{
               marginBottom: "max(0px, env(safe-area-inset-bottom, 0px))",
             }}
           >
-            {/* accent ribbon */}
+            {/* Ledger-paper hairlines — same vertical pinstripe motif used in
+                FlipStatement. Sits behind everything; very low opacity. */}
             <div
               aria-hidden
-              className="h-[3px] w-full"
+              className="pointer-events-none absolute inset-0 opacity-[0.04]"
               style={{
-                background:
-                  "linear-gradient(90deg, rgb(255,124,97) 0%, rgb(253,213,9) 50%, rgb(255,124,97) 100%)",
+                backgroundImage:
+                  "repeating-linear-gradient(90deg, rgba(14,14,14,0.9) 0 1px, transparent 1px 8%)",
               }}
             />
 
-            {/* ──── Header ──── */}
-            <div className="flex items-center justify-between gap-3 px-4 sm:px-5 py-3.5 sm:py-4 bg-ink text-cream">
-              <div className="flex items-center gap-3 min-w-0">
-                <span className="relative inline-flex w-10 h-10 flex-shrink-0 items-center justify-center rounded-[30%] bg-cream">
-                  <Image
-                    src={LOGO}
-                    alt="Tabby"
-                    width={30}
-                    height={30}
-                    className="pointer-events-none"
-                  />
-                  {/* tiny live pulse on logo, mirrors the trigger */}
+            {/* Bottom-corner accent glow — warms the lower portion of the
+                panel and gives the input area a gentle halo. */}
+            <div
+              aria-hidden
+              className="pointer-events-none absolute -bottom-32 -right-20 w-[420px] h-[420px] rounded-full opacity-70"
+              style={{
+                background:
+                  "radial-gradient(circle, rgba(255,124,97,0.18), rgba(255,124,97,0) 60%)",
+                filter: "blur(60px)",
+              }}
+            />
+
+            {/* ──── Header ──── editorial dark slab with grain */}
+            <div className="relative flex items-start justify-between gap-3 px-5 sm:px-6 pt-5 sm:pt-6 pb-5 sm:pb-6 bg-ink text-cream overflow-hidden">
+              <div className="noise" />
+              {/* hairline accent rule across the bottom — replaces the old ribbon */}
+              <div
+                aria-hidden
+                className="absolute left-5 right-5 sm:left-6 sm:right-6 bottom-0 h-px"
+                style={{
+                  background:
+                    "linear-gradient(90deg, transparent 0%, rgba(255,124,97,0.55) 30%, rgba(255,124,97,0.55) 70%, transparent 100%)",
+                }}
+              />
+              {/* faint corner accent dot */}
+              <div
+                aria-hidden
+                className="absolute -top-16 -left-16 w-44 h-44 rounded-full pointer-events-none opacity-80"
+                style={{
+                  background:
+                    "radial-gradient(circle, rgba(255,124,97,0.22), transparent 60%)",
+                  filter: "blur(28px)",
+                }}
+              />
+
+              <div className="relative flex items-center gap-3.5 min-w-0">
+                <span className="relative inline-flex w-11 h-11 flex-shrink-0">
+                  <span className="relative w-full h-full overflow-hidden rounded-[32%] bg-cream ring-1 ring-cream/15 shadow-[0_8px_22px_-8px_rgba(0,0,0,0.5)]">
+                    <Image
+                      src={LOGO}
+                      alt=""
+                      width={44}
+                      height={44}
+                      className="w-full h-full object-contain"
+                      unoptimized
+                    />
+                  </span>
                   <span
                     aria-hidden
-                    className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-[rgb(2,213,124)] ring-2 ring-ink"
+                    className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-[rgb(2,213,124)] ring-2 ring-ink"
                   >
                     <span className="absolute inset-0 rounded-full bg-[rgb(2,213,124)] animate-ping opacity-70" />
                   </span>
                 </span>
                 <div className="leading-tight min-w-0">
-                  <div className="font-grotesk font-bold text-[1.05rem] truncate tracking-[-0.01em]">
-                    Ask Tabby
+                  <div className="flex items-center gap-2 text-[0.58rem] sm:text-[0.6rem] uppercase tracking-[0.32em] text-cream/55 font-semibold">
+                    <span aria-hidden className="w-1.5 h-1.5 rounded-full bg-[rgb(2,213,124)]" />
+                    Online
                   </div>
-                  <div className="flex items-center gap-1.5 text-[0.6rem] uppercase tracking-[0.22em] text-cream/55 font-semibold truncate mt-0.5">
-                    <span aria-hidden className="w-1 h-1 rounded-full bg-[rgb(2,213,124)]" />
-                    Live · usually replies in seconds
+                  <div className="mt-1 font-grotesk font-bold text-[1.18rem] sm:text-[1.22rem] tracking-[-0.018em]">
+                    Ask <span className="italic font-medium text-accent">Tabby</span>
                   </div>
                 </div>
               </div>
@@ -313,7 +333,7 @@ export function HelpAgent() {
                   setOpen(false);
                 }}
                 aria-label="Close help agent"
-                className="w-9 h-9 flex-shrink-0 rounded-full flex items-center justify-center hover:bg-cream/10 transition-colors active:scale-95"
+                className="relative w-9 h-9 flex-shrink-0 rounded-full grid place-items-center text-cream/70 hover:text-cream hover:bg-cream/10 transition-all active:scale-95"
               >
                 <CloseIcon className="w-3 h-3" />
               </button>
@@ -322,30 +342,32 @@ export function HelpAgent() {
             {/* ──── Messages ──── */}
             <div
               ref={scrollRef}
-              className="flex-1 overflow-y-auto px-4 sm:px-5 py-5 sm:py-6 space-y-4"
+              className="relative flex-1 overflow-y-auto px-5 sm:px-6 py-6 sm:py-7 space-y-5"
             >
               {messages.length === 0 && (
-                <div className="space-y-6">
-                  {/* welcome */}
+                <div className="space-y-7">
+                  {/* Editorial welcome — chapter mark + oversized headline */}
                   <motion.div
-                    initial={{ y: 8, opacity: 0 }}
+                    initial={{ y: 10, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
-                    transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                    transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
                   >
-                    <div className="flex items-center gap-2 text-[0.6rem] sm:text-[0.62rem] uppercase tracking-[0.24em] text-ink/40 font-semibold">
-                      <span aria-hidden className="w-5 h-px bg-ink/25" />
-                      Welcome
+                    <div className="flex items-center gap-3 text-[0.58rem] sm:text-[0.6rem] uppercase tracking-[0.32em] text-ink/45 font-semibold">
+                      <span aria-hidden className="h-px w-8 bg-ink/25" />
+                      <span>§ — Hello</span>
                     </div>
-                    <p className="mt-3 font-grotesk font-bold text-ink text-[1.4rem] sm:text-[1.65rem] leading-[1.1] tracking-[-0.022em]">
-                      Hey. <span className="italic font-medium text-accent">Ask me anything</span> about Tabby.
+                    <p className="mt-4 font-grotesk font-bold text-ink text-[1.55rem] sm:text-[1.78rem] leading-[1.05] tracking-[-0.028em]">
+                      Anything you want{" "}
+                      <span className="italic font-medium text-accent">to know.</span>
                     </p>
-                    <p className="mt-2.5 text-ink/60 text-[0.88rem] sm:text-[0.93rem] leading-[1.55]">
-                      How it works, pricing, launch date — whatever you need.
+                    <p className="mt-3 text-ink/60 text-[0.92rem] sm:text-[0.96rem] leading-[1.55] max-w-[34ch]">
+                      How it works, what it costs, when it lands. Pick one or
+                      type your own.
                     </p>
                   </motion.div>
 
-                  {/* suggestion stack */}
-                  <div className="flex flex-col gap-2">
+                  {/* Suggestion stack — numbered editorial cards */}
+                  <div className="flex flex-col gap-2.5">
                     {SUGGESTIONS.map((s, i) => (
                       <motion.button
                         key={s}
@@ -356,82 +378,124 @@ export function HelpAgent() {
                           });
                           send(s);
                         }}
-                        initial={{ y: 10, opacity: 0 }}
+                        initial={{ y: 12, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
                         transition={{
-                          duration: 0.45,
+                          duration: 0.5,
                           ease: [0.22, 1, 0.36, 1],
-                          delay: 0.18 + i * 0.06,
+                          delay: 0.22 + i * 0.07,
                         }}
-                        className="group relative text-left text-[0.88rem] sm:text-[0.92rem] font-medium px-4 py-3 rounded-2xl bg-white border border-ink/10 hover:border-accent/60 hover:bg-accent/[0.03] transition-all duration-300"
+                        className="group relative text-left rounded-2xl bg-white/85 backdrop-blur-sm border border-ink/[0.07] hover:border-accent/50 hover:bg-white shadow-[0_2px_8px_-4px_rgba(14,14,14,0.08)] hover:shadow-[0_14px_32px_-12px_rgba(255,124,97,0.28)] hover:-translate-y-[1px] transition-all duration-300 overflow-hidden"
                       >
-                        <span className="flex items-center justify-between gap-3">
-                          <span className="text-ink group-hover:text-ink transition-colors">
-                            {s}
-                          </span>
+                        {/* hairline accent that grows on hover */}
+                        <span
+                          aria-hidden
+                          className="absolute left-0 top-3 bottom-3 w-[2px] bg-accent scale-y-0 group-hover:scale-y-100 origin-center transition-transform duration-300 rounded-full"
+                        />
+                        <span className="relative flex items-center gap-3.5 pl-4 pr-3.5 py-3">
                           <span
                             aria-hidden
-                            className="text-ink/30 group-hover:text-accent group-hover:translate-x-0.5 transition-all duration-300 text-[0.95rem]"
+                            className="font-grotesk font-bold tabular-nums text-[0.62rem] uppercase tracking-[0.2em] text-ink/35 group-hover:text-accent transition-colors duration-300"
                           >
-                            →
+                            {String(i + 1).padStart(2, "0")}
                           </span>
+                          <span className="flex-1 text-ink text-[0.9rem] sm:text-[0.94rem] font-medium leading-snug">
+                            {s}
+                          </span>
+                          <Arrow
+                            width={20}
+                            height={10}
+                            className="text-ink/30 group-hover:text-accent group-hover:translate-x-1 transition-all duration-300"
+                          />
                         </span>
                       </motion.button>
                     ))}
                   </div>
 
-                  {/* hairline trust note */}
-                  <div className="pt-2 flex items-center gap-2 text-[0.62rem] uppercase tracking-[0.22em] text-ink/35 font-semibold">
-                    <span aria-hidden className="w-1.5 h-1.5 rounded-full bg-accent" />
+                  {/* Trust note — same eyebrow style as section chapter marks */}
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.55, duration: 0.4 }}
+                    className="pt-1 flex items-center gap-2.5 text-[0.6rem] uppercase tracking-[0.28em] text-ink/40 font-semibold"
+                  >
+                    <span aria-hidden className="h-px w-6 bg-ink/20" />
                     Trained on Tabby docs only
-                  </div>
+                  </motion.div>
                 </div>
               )}
 
               {messages.map((m, i) => (
                 <motion.div
                   key={i}
-                  initial={{ y: 6, opacity: 0 }}
+                  initial={{ y: 8, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
-                  transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+                  transition={{ duration: 0.36, ease: [0.22, 1, 0.36, 1] }}
                   className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
                 >
-                  <div
-                    className={
-                      m.role === "user"
-                        ? "max-w-[85%] px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-2xl rounded-br-md bg-ink text-cream text-[0.88rem] sm:text-[0.92rem] leading-[1.5] whitespace-pre-wrap break-words shadow-[0_8px_22px_-10px_rgba(14,14,14,0.5)]"
-                        : "max-w-[92%] relative pl-3.5 text-ink text-[0.92rem] sm:text-[0.96rem] leading-[1.58] whitespace-pre-wrap break-words"
-                    }
-                  >
-                    {m.role === "assistant" && (
-                      <span
-                        aria-hidden
-                        className="absolute left-0 top-1.5 bottom-1.5 w-[2px] rounded-full bg-accent/55"
-                      />
-                    )}
-                    {m.content || (
-                      <span className="inline-flex items-center gap-2 text-ink/55 text-[0.82rem] uppercase tracking-[0.2em] font-semibold">
-                        <span className="relative inline-flex">
-                          <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-                          <span
-                            aria-hidden
-                            className="absolute inset-0 w-1.5 h-1.5 rounded-full bg-accent animate-ping opacity-70"
-                          />
-                        </span>
-                        thinking
+                  {m.role === "user" ? (
+                    <div className="max-w-[85%] px-4 py-2.5 rounded-[18px] rounded-br-[6px] bg-ink text-cream text-[0.92rem] leading-[1.5] whitespace-pre-wrap break-words shadow-[0_10px_28px_-12px_rgba(14,14,14,0.55)]">
+                      {m.content}
+                    </div>
+                  ) : (
+                    <div className="max-w-[92%] flex gap-3 items-start">
+                      {/* Mascot avatar — small, sits flush with the first line */}
+                      <span className="relative inline-flex w-7 h-7 mt-0.5 flex-shrink-0 overflow-hidden rounded-full bg-cream ring-1 ring-ink/10 shadow-[0_4px_10px_-4px_rgba(14,14,14,0.25)]">
+                        <Image
+                          src={LOGO}
+                          alt=""
+                          width={28}
+                          height={28}
+                          className="w-full h-full object-contain"
+                          unoptimized
+                        />
                       </span>
-                    )}
-                  </div>
+                      <div className="relative pl-3.5 text-ink text-[0.94rem] sm:text-[0.97rem] leading-[1.6] whitespace-pre-wrap break-words flex-1 min-w-0">
+                        {/* hairline accent rule running down the assistant message */}
+                        <span
+                          aria-hidden
+                          className="absolute left-0 top-1.5 bottom-1.5 w-[2px] rounded-full bg-accent/55"
+                        />
+                        {m.content || (
+                          <span className="inline-flex items-center gap-2 text-ink/50 text-[0.78rem] uppercase tracking-[0.24em] font-semibold">
+                            <span className="flex items-center gap-1">
+                              <span className="w-1 h-1 rounded-full bg-accent animate-[bounce_1s_ease-in-out_infinite]" />
+                              <span
+                                className="w-1 h-1 rounded-full bg-accent animate-[bounce_1s_ease-in-out_infinite]"
+                                style={{ animationDelay: "0.15s" }}
+                              />
+                              <span
+                                className="w-1 h-1 rounded-full bg-accent animate-[bounce_1s_ease-in-out_infinite]"
+                                style={{ animationDelay: "0.3s" }}
+                              />
+                            </span>
+                            thinking
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </motion.div>
               ))}
             </div>
 
-            {/* ──── Input ──── */}
+            {/* ──── Input ──── pill-shaped composer */}
             <form
               onSubmit={onSubmit}
-              className="ph-no-capture border-t border-ink/10 bg-white px-3.5 sm:px-4 pt-3 pb-2.5 sm:pt-3.5"
+              className="ph-no-capture relative px-4 sm:px-5 pt-3 pb-3 sm:pb-4"
             >
-              <div className="flex items-end gap-2">
+              {/* hairline rule above the input */}
+              <div
+                aria-hidden
+                className="absolute left-5 right-5 top-0 h-px bg-ink/8"
+              />
+              <div
+                className={`relative flex items-end gap-2 rounded-[20px] bg-white border transition-all duration-300 px-3 py-1.5 ${
+                  input.trim()
+                    ? "border-accent/40 shadow-[0_8px_22px_-12px_rgba(255,124,97,0.35)]"
+                    : "border-ink/10 shadow-[0_4px_14px_-8px_rgba(14,14,14,0.12)]"
+                }`}
+              >
                 <textarea
                   ref={inputRef}
                   value={input}
@@ -439,23 +503,32 @@ export function HelpAgent() {
                   onKeyDown={onKeyDown}
                   rows={1}
                   placeholder="Ask anything…"
-                  className="ph-no-capture flex-1 resize-none bg-transparent text-[16px] sm:text-[0.95rem] text-ink placeholder:text-ink/40 outline-none py-2 max-h-28 leading-[1.4]"
+                  className="ph-no-capture flex-1 resize-none bg-transparent text-[16px] sm:text-[0.95rem] text-ink placeholder:text-ink/35 outline-none py-2 max-h-28 leading-[1.45]"
                 />
                 <button
                   type="submit"
                   disabled={!input.trim() || streaming}
                   aria-label="Send message"
-                  className="flex-shrink-0 w-10 h-10 rounded-full bg-accent text-white flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed enabled:hover:shadow-[0_10px_28px_-8px_rgba(255,124,97,0.7)] enabled:hover:-translate-y-0.5 enabled:active:scale-95 transition-all duration-300"
+                  className="group flex-shrink-0 w-9 h-9 mb-1 rounded-full bg-accent text-cream grid place-items-center disabled:opacity-25 disabled:cursor-not-allowed enabled:hover:shadow-[0_10px_28px_-8px_rgba(255,124,97,0.7)] enabled:active:scale-95 transition-all duration-300"
                 >
-                  <SendIcon className="w-3.5 h-3.5" />
+                  <Arrow
+                    width={16}
+                    height={9}
+                    className="enabled:group-hover:translate-x-0.5 transition-transform duration-300"
+                  />
                 </button>
               </div>
-              <div className="mt-2.5 flex items-center justify-between gap-3 text-[0.56rem] uppercase tracking-[0.2em] text-ink/35 font-semibold">
+              <div className="mt-2.5 flex items-center justify-between gap-3 text-[0.56rem] uppercase tracking-[0.22em] text-ink/35 font-semibold">
                 <span className="flex items-center gap-1.5">
-                  <span aria-hidden>↵</span>
-                  to send · <span aria-hidden>⇧↵</span> for new line
+                  <kbd className="font-grotesk normal-case tracking-normal text-ink/45 bg-ink/[0.04] border border-ink/10 rounded px-1.5 py-0.5 text-[0.62rem]">
+                    ↵
+                  </kbd>
+                  to send
                 </span>
-                <span>AI · can be wrong</span>
+                <span className="flex items-center gap-1.5">
+                  <span aria-hidden className="w-1 h-1 rounded-full bg-ink/30" />
+                  AI — can be wrong
+                </span>
               </div>
             </form>
           </motion.div>

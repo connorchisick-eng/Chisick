@@ -872,7 +872,12 @@ export function InteractiveDemo() {
           with phone first, narrative below. Two-column at lg+ with the
           narrative panel vertically centered against the phone in the
           right column. */}
-      <div className="grid grid-cols-1 lg:grid-cols-[minmax(320px,420px)_1fr] gap-8 lg:gap-14 xl:gap-20 items-start lg:items-center flex-1 min-h-0">
+      {/* Locked two-column layout. Anchored to the top (not vertically
+          centered) at lg+ so the phone never shifts vertically when the
+          narrative copy changes length between scenes. The narrative
+          column reserves a min-height for its scene slot to keep
+          Act-label + progress-bar positions stable across scenes. */}
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(320px,420px)_1fr] gap-8 lg:gap-14 xl:gap-20 items-start flex-1 min-h-0">
         <NarrativePanel
           screen={state.screen}
           stepIdx={stepIdx}
@@ -1028,12 +1033,16 @@ function MobileDemoBar({
   );
 }
 
+// Scene transition tuning. Previously the exit used an 8px blur over 0.42s
+// which read as "the text just disappeared" — too abrupt against the 0.72s
+// staggered entry. Now exit is a longer, lower-blur fade so outgoing copy
+// lingers through the incoming stagger and the two cross-dissolve smoothly.
 const scenePanelVariants: Variants = {
   initial: (direction: number) => ({
     opacity: 0,
-    x: direction * 18,
-    y: 12,
-    filter: "blur(8px)",
+    x: direction * 14,
+    y: 10,
+    filter: "blur(6px)",
   }),
   animate: {
     opacity: 1,
@@ -1041,28 +1050,28 @@ const scenePanelVariants: Variants = {
     y: 0,
     filter: "blur(0px)",
     transition: {
-      duration: 0.72,
+      duration: 0.62,
       ease: [0.22, 1, 0.36, 1],
       when: "beforeChildren",
-      staggerChildren: 0.065,
-      delayChildren: 0.03,
+      staggerChildren: 0.055,
+      delayChildren: 0.08,
     },
   },
   exit: (direction: number) => ({
     opacity: 0,
-    x: -direction * 14,
-    y: -8,
-    filter: "blur(8px)",
-    transition: { duration: 0.42, ease: [0.4, 0, 0.2, 1] },
+    x: -direction * 10,
+    y: -6,
+    filter: "blur(3px)",
+    transition: { duration: 0.58, ease: [0.4, 0, 0.2, 1] },
   }),
 };
 
 const sceneChildVariants: Variants = {
-  initial: { opacity: 0, y: 14 },
+  initial: { opacity: 0, y: 12 },
   animate: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.58, ease: [0.22, 1, 0.36, 1] },
+    transition: { duration: 0.52, ease: [0.22, 1, 0.36, 1] },
   },
 };
 
@@ -1125,15 +1134,15 @@ function NarrativePanel({
         </motion.div>
       </AnimatePresence>
 
-      {/* Scene content slot — clips horizontal slide to the panel width
-          and uses motion's layout animation so panel height tweens
-          smoothly when scenes have different content lengths. */}
-      <motion.div
-        layout={!reduced}
-        transition={{
-          layout: { duration: 0.5, ease: [0.22, 1, 0.36, 1] },
-        }}
-        className="relative overflow-hidden mt-8"
+      {/* Scene content slot — fixed min-height so the column NEVER
+          reflows between scenes. That reflow is what used to nudge the
+          phone (and the bottom progress bar) vertically when switching
+          views. We size the slot to the tallest narrative we ship; any
+          overflow (rare) is allowed to expand below without pulling the
+          phone because the grid row is anchored `items-start`. */}
+      <div
+        className="relative mt-8"
+        style={{ minHeight: "clamp(360px, 44vh, 520px)" }}
       >
         <AnimatePresence mode="popLayout" initial={false} custom={direction}>
           <motion.div
@@ -1143,6 +1152,7 @@ function NarrativePanel({
             initial={reduced ? false : "initial"}
             animate={reduced ? { opacity: 1 } : "animate"}
             exit={reduced ? { opacity: 1 } : "exit"}
+            className="absolute inset-x-0 top-0"
           >
             <motion.div
               variants={reduced ? undefined : sceneChildVariants}
@@ -1184,7 +1194,7 @@ function NarrativePanel({
             )}
           </motion.div>
         </AnimatePresence>
-      </motion.div>
+      </div>
 
       {/* Phase progress strip — stays mounted across scene changes.
           Only the bar width and the digit counter tween/swap. */}

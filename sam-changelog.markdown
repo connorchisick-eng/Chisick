@@ -4,6 +4,30 @@ Hey. Quick rundown of what I changed today, in plain English. No tech jargon.
 
 ---
 
+## PostHog analytics — fixed in production
+
+PostHog wasn't actually collecting data on splittabby.com. The issue was a misconfigured setting on Vercel that was sending events to the wrong address (the PostHog *dashboard* instead of the *ingestion* endpoint) and also bypassing our ad-blocker-proof proxy.
+
+Fix: removed the bad setting, redeployed. Analytics now flow through our own domain (`splittabby.com/ingest/*`), which means uBlock, Brave Shields, and similar ad-blockers can't strip events. Verified end-to-end by firing a test event from the command line and getting a `200 OK` from PostHog.
+
+You should start seeing pageviews, the waitlist signup funnel, and help-agent chat events populate in PostHog immediately.
+
+---
+
+## Demo page — phone locked in place, text transitions smoothed
+
+On the interactive demo (the live phone walkthrough), flipping between scenes felt twitchy. The phone would **slide up and down a little** each time the copy on the left changed length, and the text swap felt like it **disappeared too fast** before the new copy came in. The floating "Skip to recap" / "Join the waitlist" buttons in the bottom-right also floated around on shorter laptop screens.
+
+Fixes:
+
+- **Phone is now anchored in place.** The two columns are pinned to the top of the row, and the text column reserves a fixed vertical slot so the phone can't get nudged down when a scene's description is longer than another's.
+- **Text crossfade is gentler.** Outgoing copy now takes a touch longer to leave and has less blur, so it overlaps the incoming copy cleanly instead of popping out.
+- **Floating CTAs stay put.** They're pinned to the bottom-right of the viewport with safe-area padding, no overlap with the mobile bottom bar (which only shows on phones anyway).
+
+Net effect: the whole scene-change feels like one smooth cross-dissolve instead of a small layout jolt.
+
+---
+
 ## Mobile menu close control
 
 On phones, opening the menu (the burger icon in the top-right) used to slide a full-screen panel over everything — but there was **no visible way to close it**. The little "X" button was hiding behind the panel, so tapping it did nothing. Felt broken.

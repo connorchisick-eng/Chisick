@@ -201,9 +201,12 @@ export function StickyStack() {
     >
       <div className="noise" />
 
-      {/* Body — phone left, copy right. Tightened top padding so phone +
-          copy can stretch larger; max-w bumped for more horizontal room. */}
-      <div className="relative h-full mx-auto max-w-[1560px] px-8 lg:px-16 pt-24 pb-28 grid grid-cols-12 gap-12 lg:gap-24 items-center">
+      {/* Body — phone left, copy right. Top padding must clear the fixed
+          Nav (104px) with breathing room — on shorter laptops the previous
+          pt-24 (96px) put the phone's crown behind the nav. pt-[136px]
+          gives a comfortable 32px gap at the most cramped viewport sizes
+          while still reading as a balanced composition on tall screens. */}
+      <div className="relative h-full mx-auto max-w-[1560px] px-8 lg:px-16 pt-[120px] lg:pt-[136px] pb-24 lg:pb-28 grid grid-cols-12 gap-12 lg:gap-24 items-center">
         {/* Phone column — bigger. Phone now fills closer to viewport height. */}
         <div className="col-span-5 relative h-full flex items-center justify-center">
           <div
@@ -294,78 +297,6 @@ export function StickyStack() {
             }`}
           />
         ))}
-      </div>
-
-      {/* Editorial scroll cue — bottom-LEFT marginalia, anchored at the
-          same x as the step rail so pips (mid-height) + counter (bottom)
-          read as one system. Sits opposite the chat widget's bottom-right
-          corner. Caption row leads with the stroke-arrow; oversized active
-          digit crossfades in place. Last step shifts accent → cream and
-          flips the caption — tonal change, no card chrome. */}
-      <div className="pointer-events-none absolute bottom-9 left-5 z-30 flex justify-start lg:bottom-14 lg:left-7">
-        <div className="flex flex-col items-start gap-3 lg:gap-4">
-          <div className="flex items-center gap-2.5">
-            <motion.span
-              aria-hidden
-              animate={{ y: [0, 4, 0] }}
-              transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
-              className="relative inline-flex h-[18px] w-[10px] items-start justify-center"
-            >
-              <span className="absolute top-0 left-1/2 h-3 w-px -translate-x-1/2 bg-cream/55" />
-              <span className="absolute bottom-0 left-1/2 h-[7px] w-[7px] -translate-x-1/2 rotate-45 border-b border-r border-cream/55" />
-            </motion.span>
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.span
-                key={active === STEPS.length - 1 ? "last" : "continue"}
-                initial={{ opacity: 0, y: 4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -4 }}
-                transition={{ duration: 0.3 }}
-                className="block text-[0.66rem] font-bold uppercase tracking-[0.32em] leading-none text-cream/55"
-              >
-                {active === STEPS.length - 1 ? "Final step" : "Keep scrolling"}
-              </motion.span>
-            </AnimatePresence>
-          </div>
-
-          <div className="flex items-end gap-3 font-grotesk lg:gap-4">
-            <div
-              className="relative tabular-nums"
-              style={{
-                fontSize: "clamp(2.6rem, 4.6vw, 4.4rem)",
-                letterSpacing: "-0.045em",
-                width: "1.95em",
-                height: "0.78em",
-              }}
-            >
-              <AnimatePresence initial={false}>
-                <motion.span
-                  key={active}
-                  initial={{ opacity: 0, y: 14, filter: "blur(8px)" }}
-                  animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-                  exit={{ opacity: 0, y: -12, filter: "blur(8px)" }}
-                  transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-                  className={`absolute left-0 bottom-0 block font-bold leading-none transition-colors duration-500 ${
-                    active === STEPS.length - 1 ? "text-cream" : "text-accent"
-                  }`}
-                >
-                  {String(active + 1).padStart(2, "0")}
-                </motion.span>
-              </AnimatePresence>
-            </div>
-            <span aria-hidden className="mb-2 inline-block h-px w-7 bg-cream/25 lg:w-9" />
-            <span
-              className="font-medium leading-none tabular-nums text-cream/35"
-              style={{
-                fontSize: "clamp(1rem, 1.4vw, 1.4rem)",
-                letterSpacing: "0.01em",
-                paddingBottom: "0.12em",
-              }}
-            >
-              0{STEPS.length}
-            </span>
-          </div>
-        </div>
       </div>
 
       {/* Hairline progress bar — pinned to very bottom */}
