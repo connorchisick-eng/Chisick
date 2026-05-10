@@ -23,10 +23,9 @@ export default function DemoPage() {
       />
 
       {/* Demo takes the whole viewport — Nav/Footer hidden via SiteChrome.
-          The "Back to tabby" pill lives in InteractiveDemo's top bar so it
-          sits in-row with the narrative title. */}
+          The "Back to tabby" pill lives in InteractiveDemo's compact top bar. */}
       <section
-        className="relative mx-auto max-w-[1440px] px-4 pb-[7.5rem] pt-8 sm:px-6 sm:pb-5 md:px-12 lg:px-16"
+        className="relative mx-auto flex min-h-screen max-w-[1360px] flex-col px-4 pb-[7.5rem] pt-5 sm:px-6 md:px-10 lg:px-12 lg:pb-8 lg:pt-4 xl:px-8"
       >
         <InteractiveDemo />
       </section>

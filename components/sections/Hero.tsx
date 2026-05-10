@@ -8,6 +8,11 @@ import { Phone } from "@/components/Phone";
 import { Arrow } from "@/components/icons";
 import { Magnetic } from "@/components/Magnetic";
 import { PHONE_VARIANTS, PREMIUM_VARIANTS, screenImageSrc } from "@/lib/images";
+import {
+  PHONE_ASPECT,
+  PHONE_FRAME_SRC,
+  PHONE_INSETS,
+} from "@/lib/phoneInsets";
 import type { ScreenVariant } from "@/components/Screen";
 import { Screen } from "@/components/Screen";
 import { track, useSectionViewed } from "@/lib/analytics";
@@ -390,24 +395,7 @@ export function Hero() {
               className="relative"
               onClick={(e) => e.stopPropagation()}
             >
-              {CODED_VARIANTS.has(lightbox) ? (
-                <div
-                  className="bg-white rounded-[2rem] shadow-[0_60px_120px_-40px_rgba(14,14,14,0.75)] overflow-hidden"
-                  style={{
-                    width: "min(86vw, calc(86vh * 9 / 19.5))",
-                    aspectRatio: "9 / 19.5",
-                  }}
-                >
-                  <Screen variant={lightbox} />
-                </div>
-              ) : (
-                <img
-                  src={screenImageSrc(lightbox)}
-                  alt={`Tabby ${lightbox} screen`}
-                  draggable={false}
-                  className="block max-h-[86vh] max-w-[86vw] w-auto h-auto rounded-[2rem] shadow-[0_60px_120px_-40px_rgba(14,14,14,0.75)] select-none"
-                />
-              )}
+              <SelectedPhoneFrame variant={lightbox} />
               <button
                 type="button"
                 onClick={() => {
@@ -429,5 +417,48 @@ export function Hero() {
         )}
       </AnimatePresence>
     </section>
+  );
+}
+
+function SelectedPhoneFrame({ variant }: { variant: ScreenVariant }) {
+  const src = screenImageSrc(variant);
+
+  return (
+    <div
+      className="relative select-none drop-shadow-[0_60px_90px_rgba(14,14,14,0.55)]"
+      style={{
+        width: "min(86vw, calc(86vh * 450 / 920))",
+        aspectRatio: PHONE_ASPECT,
+      }}
+    >
+      <div
+        className="absolute overflow-hidden bg-white"
+        style={{
+          top: PHONE_INSETS.top,
+          bottom: PHONE_INSETS.bottom,
+          left: PHONE_INSETS.left,
+          right: PHONE_INSETS.right,
+          borderRadius: PHONE_INSETS.radius,
+        }}
+      >
+        {CODED_VARIANTS.has(variant) ? (
+          <Screen variant={variant} />
+        ) : (
+          <img
+            src={src}
+            alt={`Tabby ${variant} screen`}
+            draggable={false}
+            className="block h-full w-full object-cover pointer-events-none"
+          />
+        )}
+      </div>
+      <img
+        src={PHONE_FRAME_SRC}
+        alt=""
+        aria-hidden
+        draggable={false}
+        className="absolute inset-0 h-full w-full pointer-events-none select-none"
+      />
+    </div>
   );
 }

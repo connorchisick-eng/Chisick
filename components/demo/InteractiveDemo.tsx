@@ -7,7 +7,6 @@ import {
   useState,
 } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import type { Variants } from "motion/react";
@@ -20,7 +19,6 @@ import {
   PHONE_INSETS,
 } from "@/lib/phoneInsets";
 import { DemoOnboarding } from "@/components/demo/DemoOnboarding";
-import { FloatingCtas } from "@/components/demo/FloatingCtas";
 import { useEscapeClose } from "@/lib/useEscapeClose";
 import { useReducedMotion } from "@/lib/useReducedMotion";
 import { track } from "@/lib/analytics";
@@ -623,19 +621,17 @@ export function InteractiveDemo() {
   }, [exitConfirmOpen, helpOpen]);
 
   return (
-    <div className="mx-auto max-w-[1440px] flex flex-col">
-      {/* Top bar — two edge-aligned groups (back+title on left, stepper
-          + label + reset on right) so the center column stays open and
-          leaves room for the floating Pro badge on pro screens.
-          Margin below collapses on pro screens because the pill row
-          provides its own vertical spacing. */}
+    <div className="mx-auto flex w-full max-w-[1320px] flex-1 flex-col">
+      {/* Top bar — single locked row. The scene headline lives in the
+          narrative panel below, so this chrome stays compact and never
+          competes with the walkthrough copy. */}
       <div
         className={clsx(
-          "flex items-center justify-between gap-6 md:gap-10 flex-wrap",
+          "flex items-center justify-between gap-4 md:gap-8 flex-nowrap",
           "mb-4 md:mb-6",
         )}
       >
-        <div className="flex items-center gap-3 md:gap-6 flex-wrap relative">
+        <div className="flex min-w-0 flex-1 items-center gap-3 md:gap-5 relative">
           <button
             type="button"
             aria-label="Back to Tabby"
@@ -711,44 +707,35 @@ export function InteractiveDemo() {
               </motion.div>
             )}
           </AnimatePresence>
-          <AnimatePresence mode="wait">
-            <motion.h2
-              key={state.screen}
-              initial={{ opacity: 0, x: -6 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 6 }}
-              transition={{ duration: 0.25 }}
-              className="font-grotesk font-bold leading-none flex items-center gap-2.5"
-              style={{
-                color: T.ink,
-                fontSize: "clamp(1.3rem, 1.9vw, 1.75rem)",
-                letterSpacing: "-0.02em",
-              }}
-            >
-              {state.screen === "dashboard" && (
-                <Image
-                  src={LOGO}
-                  alt=""
-                  aria-hidden
-                  width={32}
-                  height={32}
-                  className="rounded-md"
-                  style={{ background: "#fff", padding: 3 }}
-                />
-              )}
-              {NARRATIVES[state.screen].title}
-              {isProScreen && (
-                <span className="inline-flex items-center rounded-full bg-accent px-2.5 py-1 align-middle text-[0.52rem] font-bold uppercase leading-none tracking-[0.18em] text-white shadow-[0_8px_20px_-10px_rgba(255,124,97,0.9)] md:px-3 md:text-[0.58rem]">
-                  Pro
-                </span>
-              )}
-            </motion.h2>
-          </AnimatePresence>
+          <div className="flex min-w-0 flex-1 items-center gap-2.5">
+            <AnimatePresence mode="wait">
+              <motion.h2
+                key={state.screen}
+                initial={{ opacity: 0, x: -6 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 6 }}
+                transition={{ duration: 0.25 }}
+                className="min-w-0 truncate font-grotesk font-bold leading-none text-body/55"
+                style={{
+                  fontSize: "clamp(0.82rem, 1vw, 1rem)",
+                  letterSpacing: 0,
+                  textTransform: "uppercase",
+                }}
+              >
+                Interactive demo
+              </motion.h2>
+            </AnimatePresence>
+            {isProScreen && (
+              <span className="hidden md:inline-flex items-center rounded-full bg-accent px-2.5 py-1 text-[0.52rem] font-bold uppercase leading-none tracking-[0.18em] text-white shadow-[0_8px_20px_-10px_rgba(255,124,97,0.9)] shrink-0">
+                Pro
+              </span>
+            )}
+          </div>
         </div>
 
-        <div className="flex items-center gap-3 md:gap-6 flex-wrap">
+        <div className="flex shrink-0 items-center gap-2 md:gap-4 flex-nowrap">
           {/* Prev/next controls stay visible for mouse and keyboard users. */}
-          <div className="flex items-center gap-2">
+          <div className="hidden sm:flex items-center gap-2">
             <button
               type="button"
               onClick={() => {
@@ -781,11 +768,11 @@ export function InteractiveDemo() {
             </button>
           </div>
 
-          {/* Dot stepper keeps the 5px visual dots while exposing larger hit areas. */}
+          {/* Dot stepper — only at xl+ where there's room for 15 dots. */}
           <div
             role="tablist"
             aria-label="Demo screens"
-            className="hidden sm:flex items-center gap-1 md:gap-2.5"
+            className="hidden xl:flex items-center gap-2"
           >
             {STEP_ORDER.map((s, i) => {
               const active = i === stepIdx;
@@ -815,12 +802,13 @@ export function InteractiveDemo() {
             })}
           </div>
 
+          {/* Counter — fixed-width tabular nums so the chrome can't shift
+              when the step number rolls over (e.g. 09 → 10). */}
           <span
-            className="text-[9px] md:text-[10px] uppercase tracking-[0.22em] font-semibold whitespace-nowrap"
-            style={{ color: T.gray }}
+            className="hidden sm:inline-block text-[10px] uppercase tracking-[0.22em] font-semibold whitespace-nowrap tabular-nums shrink-0"
+            style={{ color: T.gray, minWidth: "3.5em", textAlign: "right" }}
           >
-            {String(stepIdx + 1).padStart(2, "0")}/{STEP_ORDER.length}{" "}
-            <span style={{ color: T.ink }}>{STEP_LABEL[state.screen]}</span>
+            {String(stepIdx + 1).padStart(2, "0")}/{STEP_ORDER.length}
           </span>
 
           <button
@@ -829,7 +817,7 @@ export function InteractiveDemo() {
               track("demo_reset", demoBaseProps());
               dispatch({ type: "RESET" });
             }}
-            className="text-[10px] md:text-[11px] uppercase tracking-[0.22em] font-semibold transition px-3 py-1.5 md:px-3.5 md:py-2 rounded-full border border-line/20 hover:border-accent/45 hover:bg-accent/[0.06]"
+            className="hidden md:inline-flex items-center text-[10px] md:text-[11px] uppercase tracking-[0.22em] font-semibold transition px-3 py-1.5 md:px-3.5 md:py-2 rounded-full border border-line/20 hover:border-accent/45 hover:bg-accent/[0.06] shrink-0"
             style={{ color: T.ink }}
           >
             ↺ reset
@@ -838,7 +826,7 @@ export function InteractiveDemo() {
             type="button"
             onClick={() => setHelpOpen(true)}
             aria-label="Re-open the demo intro"
-            className="w-7 h-7 rounded-full border border-line/15 text-body/55 hover:text-body hover:border-accent/40 hover:bg-accent/5 transition-colors flex items-center justify-center text-[0.78rem] font-semibold"
+            className="w-7 h-7 rounded-full border border-line/15 text-body/55 hover:text-body hover:border-accent/40 hover:bg-accent/5 transition-colors flex items-center justify-center text-[0.78rem] font-semibold shrink-0"
           >
             ?
           </button>
@@ -868,22 +856,27 @@ export function InteractiveDemo() {
         </div>
       */}
 
-      {/* Body grid — narrative panel + phone. Stacks on mobile/tablet
-          with phone first, narrative below. Two-column at lg+ with the
-          narrative panel vertically centered against the phone in the
-          right column. */}
-      {/* Locked two-column layout. Anchored to the top (not vertically
-          centered) at lg+ so the phone never shifts vertically when the
-          narrative copy changes length between scenes. The narrative
-          column reserves a min-height for its scene slot to keep
-          Act-label + progress-bar positions stable across scenes. */}
-      <div className="grid grid-cols-1 lg:grid-cols-[minmax(320px,420px)_1fr] gap-8 lg:gap-14 xl:gap-20 items-start flex-1 min-h-0">
+      {/* Two-column body. Narrative on the left, phone on the right at
+          lg+; stacked (phone first) on mobile/tablet. `lg:items-stretch`
+          pins the rail height to the phone column; the rail then
+          vertically centers its content so the cluster reads as a single
+          balanced block sitting next to the device. */}
+      <div className="grid flex-1 grid-cols-1 items-start gap-8 min-h-0 lg:grid-cols-[minmax(360px,460px)_minmax(430px,540px)] lg:items-stretch lg:justify-center lg:gap-10 xl:gap-14">
         <NarrativePanel
           screen={state.screen}
           stepIdx={stepIdx}
-          className="order-2 lg:order-1 lg:pt-2"
+          showCtas={state.screen !== "replay"}
+          onSkipToRecap={() => {
+            track("demo_action", {
+              ...demoBaseProps(),
+              action_type: "SKIP_TO_RECAP",
+              target_screen: "replay",
+            });
+            dispatch({ type: "GOTO", screen: "replay" });
+          }}
+          className="order-2 lg:order-1"
         />
-        <div className="order-1 lg:order-2 flex flex-col justify-start items-center min-h-0 pt-0 pb-2 w-full">
+        <div className="order-1 lg:order-2 flex min-h-0 w-full flex-col items-center justify-start pb-2 pt-0">
           <PhoneShell>
             <PhoneRouter
               state={state}
@@ -904,19 +897,6 @@ export function InteractiveDemo() {
         onClose={() => setHelpOpen(false)}
       />
 
-      {/* Persistent CTAs — visible on every scene except the final
-          replay screen, which already has its own prominent CTAs. */}
-      <FloatingCtas
-        visible={state.screen !== "replay"}
-        onSkipToRecap={() => {
-          track("demo_action", {
-            ...demoBaseProps(),
-            action_type: "SKIP_TO_RECAP",
-            target_screen: "replay",
-          });
-          dispatch({ type: "GOTO", screen: "replay" });
-        }}
-      />
       <MobileDemoBar
         visible={state.screen !== "replay"}
         screen={state.screen}
@@ -973,7 +953,7 @@ function MobileDemoBar({
 
   return (
     <div
-      className="fixed left-3 right-3 z-50 sm:hidden rounded-2xl border border-line/12 bg-white/94 px-3 pb-3 pt-2.5 shadow-[0_18px_48px_-18px_rgba(14,14,14,0.38)] backdrop-blur"
+      className="fixed left-3 right-3 z-50 lg:hidden rounded-2xl border border-line/12 bg-white/94 px-3 pb-3 pt-2.5 shadow-[0_18px_48px_-18px_rgba(14,14,14,0.38)] backdrop-blur"
       style={{ bottom: "max(env(safe-area-inset-bottom), 0.75rem)" }}
     >
       <div className="mb-2 flex items-center justify-between gap-3">
@@ -1033,73 +1013,46 @@ function MobileDemoBar({
   );
 }
 
-// Scene transition tuning. Previously the exit used an 8px blur over 0.42s
-// which read as "the text just disappeared" — too abrupt against the 0.72s
-// staggered entry. Now exit is a longer, lower-blur fade so outgoing copy
-// lingers through the incoming stagger and the two cross-dissolve smoothly.
+// Scene transition — single opacity fade with a tiny lift. No direction
+// slide, no children stagger; the whole block tweens together so the
+// rail reads as a calm cross-dissolve instead of a cascading reveal.
 const scenePanelVariants: Variants = {
-  initial: (direction: number) => ({
-    opacity: 0,
-    x: direction * 14,
-    y: 10,
-    filter: "blur(6px)",
-  }),
+  initial: { opacity: 0, y: 4 },
   animate: {
     opacity: 1,
-    x: 0,
     y: 0,
-    filter: "blur(0px)",
-    transition: {
-      duration: 0.62,
-      ease: [0.22, 1, 0.36, 1],
-      when: "beforeChildren",
-      staggerChildren: 0.055,
-      delayChildren: 0.08,
-    },
+    transition: { duration: 0.22, ease: [0.22, 1, 0.36, 1] },
   },
-  exit: (direction: number) => ({
+  exit: {
     opacity: 0,
-    x: -direction * 10,
-    y: -6,
-    filter: "blur(3px)",
-    transition: { duration: 0.58, ease: [0.4, 0, 0.2, 1] },
-  }),
+    transition: { duration: 0.14, ease: "linear" },
+  },
 };
 
+// Children inherit parent timing; kept as a no-op so existing
+// `variants={sceneChildVariants}` references stay valid without forcing
+// a rewrite.
 const sceneChildVariants: Variants = {
-  initial: { opacity: 0, y: 12 },
-  animate: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.52, ease: [0.22, 1, 0.36, 1] },
-  },
+  initial: { opacity: 1 },
+  animate: { opacity: 1 },
 };
 
 function NarrativePanel({
   screen,
   stepIdx,
   className,
+  showCtas,
+  onSkipToRecap,
 }: {
   screen: Screen;
   stepIdx: number;
   className?: string;
+  showCtas: boolean;
+  onSkipToRecap: () => void;
 }) {
   const n = NARRATIVES[screen];
   const phase = PHASES[screen];
   const phaseLabel = PHASE_LABEL[phase];
-
-  // Track previous step so we can animate scene-content slide direction.
-  // +1 = moving forward, -1 = moving back (reset / dot-stepper jump back).
-  const prevStepIdxRef = useRef(stepIdx);
-  const direction =
-    stepIdx === prevStepIdxRef.current
-      ? 1
-      : stepIdx > prevStepIdxRef.current
-      ? 1
-      : -1;
-  useEffect(() => {
-    prevStepIdxRef.current = stepIdx;
-  }, [stepIdx]);
 
   const reduced = useReducedMotion();
 
@@ -1113,17 +1066,17 @@ function NarrativePanel({
       : (stepIdx - phaseStart) / (phaseEnd - phaseStart);
 
   return (
-    <aside className={clsx("relative w-full", className)}>
+    <aside className={clsx("relative w-full flex flex-col lg:h-full lg:justify-center", className)}>
       {/* Phase chip — only animates when the *phase* actually changes,
           not on every scene step. Keyed on phase, not screen. */}
-      <AnimatePresence mode="wait">
+      <AnimatePresence mode="wait" initial={false}>
         <motion.div
           key={phase}
-          initial={reduced ? false : { opacity: 0, y: 4 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={reduced ? { opacity: 1 } : { opacity: 0, y: -4 }}
-          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-          className="flex items-center gap-3 text-[0.74rem] uppercase tracking-[0.28em] font-semibold text-body/45"
+          initial={reduced ? false : { opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={reduced ? { opacity: 1 } : { opacity: 0 }}
+          transition={{ duration: 0.18, ease: "linear" }}
+          className="flex items-center gap-3 text-[0.74rem] uppercase tracking-[0.28em] font-semibold text-body/45 shrink-0"
         >
           <span aria-hidden className="inline-block w-8 h-px bg-body/30" />
           <span>
@@ -1134,63 +1087,41 @@ function NarrativePanel({
         </motion.div>
       </AnimatePresence>
 
-      {/* Scene content slot — fixed min-height so the column NEVER
-          reflows between scenes. That reflow is what used to nudge the
-          phone (and the bottom progress bar) vertically when switching
-          views. We size the slot to the tallest narrative we ship; any
-          overflow (rare) is allowed to expand below without pulling the
-          phone because the grid row is anchored `items-start`. */}
-      <div
-        className="relative mt-8"
-        style={{ minHeight: "clamp(360px, 44vh, 520px)" }}
-      >
-        <AnimatePresence mode="popLayout" initial={false} custom={direction}>
+      {/* Scene content slot — natural height. Progress strip and CTAs
+          flow immediately beneath the body so the rail packs tight from
+          the top with no dead space. */}
+      <div className="relative mt-5">
+        <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={screen}
-            custom={direction}
             variants={reduced ? undefined : scenePanelVariants}
             initial={reduced ? false : "initial"}
             animate={reduced ? { opacity: 1 } : "animate"}
             exit={reduced ? { opacity: 1 } : "exit"}
-            className="absolute inset-x-0 top-0"
+            className="relative"
+            style={{ willChange: "opacity" }}
           >
-            <motion.div
-              variants={reduced ? undefined : sceneChildVariants}
-              className="text-[0.78rem] uppercase tracking-[0.26em] font-semibold text-body/55"
-            >
+            <div className="text-[0.7rem] font-semibold uppercase tracking-[0.32em] text-body/45">
               {n.eyebrow}
-            </motion.div>
+            </div>
 
-            <motion.h3
-              variants={reduced ? undefined : sceneChildVariants}
-              className="mt-4 font-grotesk font-bold text-body leading-[1.0] tracking-[-0.03em]"
-              style={{ fontSize: "clamp(2.1rem, 3.6vw, 3.3rem)" }}
+            <h3
+              className="mt-3 font-grotesk font-bold text-body leading-[0.98] tracking-[-0.035em] text-balance"
+              style={{ fontSize: "clamp(2rem, 3.4vw, 2.85rem)" }}
             >
               {n.title}
-            </motion.h3>
+            </h3>
 
-            <motion.p
-              variants={reduced ? undefined : sceneChildVariants}
-              className="mt-6 text-body/72 leading-[1.6] text-[1.08rem] md:text-[1.14rem]"
-            >
+            <p className="mt-4 max-w-[36ch] text-body/68 leading-[1.55] text-[1rem] md:text-[1.04rem]">
               {n.body}
-            </motion.p>
+            </p>
 
             {n.highlight && (
-              <motion.div
-                variants={reduced ? undefined : sceneChildVariants}
-                className="mt-6 rounded-xl border border-accent/30 bg-accent/[0.06] px-5 py-4"
-              >
-                <div className="flex items-start gap-3">
-                  <span
-                    aria-hidden
-                    className="mt-[0.55rem] w-2 h-2 rounded-full bg-accent flex-shrink-0"
-                  />
-                  <p className="text-body/78 leading-[1.55] text-[1rem]">
-                    {n.highlight}
-                  </p>
-                </div>
-              </motion.div>
+              <div className="mt-4 max-w-[36ch] border-l-2 border-accent/55 pl-3.5">
+                <p className="text-[0.9rem] leading-[1.5] text-body/68">
+                  {n.highlight}
+                </p>
+              </div>
             )}
           </motion.div>
         </AnimatePresence>
@@ -1198,7 +1129,7 @@ function NarrativePanel({
 
       {/* Phase progress strip — stays mounted across scene changes.
           Only the bar width and the digit counter tween/swap. */}
-      <div className="mt-10 flex items-center gap-3">
+      <div className="mt-7 flex items-center gap-3 shrink-0">
         <span className="text-[0.7rem] uppercase tracking-[0.24em] font-semibold text-body/45 whitespace-nowrap">
           {phaseLabel}
         </span>
@@ -1214,17 +1145,17 @@ function NarrativePanel({
             animate={{
               width: `${Math.max(8, phaseProgress * 100).toFixed(0)}%`,
             }}
-            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
           />
         </span>
         <span className="text-[0.7rem] uppercase tracking-[0.24em] font-semibold text-body/55 whitespace-nowrap relative inline-block min-w-[3.4em] text-right tabular-nums">
           <AnimatePresence mode="wait" initial={false}>
             <motion.span
               key={stepIdx}
-              initial={reduced ? false : { opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={reduced ? { opacity: 1 } : { opacity: 0, y: -6 }}
-              transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+              initial={reduced ? false : { opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={reduced ? { opacity: 1 } : { opacity: 0 }}
+              transition={{ duration: 0.18, ease: "linear" }}
               className="block"
             >
               {String(stepIdx + 1).padStart(2, "0")}/{STEP_ORDER.length}
@@ -1232,6 +1163,35 @@ function NarrativePanel({
           </AnimatePresence>
         </span>
       </div>
+
+      {/* Conversion CTAs — flow naturally beneath the progress strip.
+          Hidden below lg where MobileDemoBar takes over. */}
+      {showCtas && (
+        <div className="mt-5 hidden lg:flex flex-wrap items-center gap-3 shrink-0">
+          <Link
+            href="/waitlist"
+            onClick={() =>
+              track("cta_clicked", {
+                cta_name: "join_waitlist",
+                location: "demo_narrative",
+                target_path: "/waitlist",
+              })
+            }
+            className="btn-primary !text-[0.82rem] !py-[0.7rem] !px-[1.15rem] shadow-[0_18px_40px_-12px_rgba(255,124,97,0.45)]"
+          >
+            Join the waitlist
+            <Arrow className="arrow" />
+          </Link>
+          <button
+            type="button"
+            onClick={onSkipToRecap}
+            className="inline-flex items-center gap-1.5 rounded-full border border-line/15 bg-white/70 px-3.5 py-2 text-[0.7rem] font-semibold uppercase tracking-[0.2em] text-body/65 hover:text-body hover:border-accent/40 hover:bg-white transition-colors"
+          >
+            Skip to recap
+            <span aria-hidden className="text-accent">↗</span>
+          </button>
+        </div>
+      )}
     </aside>
   );
 }
@@ -1424,14 +1384,15 @@ function PhoneRouter(props: RouterProps) {
   const reduced = useReducedMotion();
   return (
     <div id="phone-screen" role="tabpanel" className="absolute inset-0">
-      <AnimatePresence mode="wait">
+      <AnimatePresence mode="wait" initial={false}>
         <motion.div
           key={props.state.screen}
-          initial={reduced ? false : { opacity: 0, y: 10, filter: "blur(8px)" }}
-          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-          exit={reduced ? { opacity: 1 } : { opacity: 0, y: -8, filter: "blur(8px)" }}
-          transition={{ duration: reduced ? 0 : 0.42, ease: [0.22, 1, 0.36, 1] }}
+          initial={reduced ? false : { opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={reduced ? { opacity: 1 } : { opacity: 0, y: -4 }}
+          transition={{ duration: reduced ? 0 : 0.28, ease: [0.22, 1, 0.36, 1] }}
           className="absolute inset-0"
+          style={{ willChange: "opacity, transform" }}
         >
           {props.state.screen === "camera" && <CameraScreen {...props} />}
           {props.state.screen === "scanning" && <ScanningScreen {...props} />}
@@ -1757,15 +1718,17 @@ function ScanningScreen({ dispatch }: RouterProps) {
               />
             ))}
           </div>
-          {/* Scan line */}
+          {/* Scan line — animated via transform (GPU) instead of `top` (layout).
+              Element is 2.5% tall; translateY 3880% covers ~97% of parent. */}
           <motion.div
-            className="absolute left-0 right-0"
+            className="absolute left-0 right-0 top-0"
             style={{
               height: "2.5%",
               background: `linear-gradient(180deg, ${T.green}00, ${T.green}, ${T.green}00)`,
               boxShadow: `0 0 24px ${T.green}`,
+              willChange: "transform",
             }}
-            animate={{ top: ["0%", "97%", "0%"] }}
+            animate={{ y: ["0%", "3880%", "0%"] }}
             transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
           />
         </motion.div>
@@ -3100,15 +3063,27 @@ function BottomNav({
 // ─────────────────────────────────────────────────────────────────
 
 function CardScreen({ dispatch, yourTotal }: RouterProps) {
+  const reduced = useReducedMotion();
   const [phase, setPhase] = useState<"ready" | "tapping" | "done">("ready");
+
+  // Cleanup-aware tap sequence — without refs, the timeouts would keep
+  // firing after navigating away (e.g. via the swipe-up cancel) and
+  // mutate state on an unmounted component.
+  const tapTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  useEffect(() => () => {
+    tapTimers.current.forEach(clearTimeout);
+  }, []);
 
   const onTap = () => {
     if (phase !== "ready") return;
     setPhase("tapping");
-    setTimeout(() => {
+    tapTimers.current.push(setTimeout(() => {
       setPhase("done");
-      setTimeout(() => dispatch({ type: "GOTO", screen: "pool" }), 700);
-    }, 1200);
+      tapTimers.current.push(setTimeout(
+        () => dispatch({ type: "GOTO", screen: "pool" }),
+        700,
+      ));
+    }, 1200));
   };
 
   return (
@@ -3127,9 +3102,10 @@ function CardScreen({ dispatch, yourTotal }: RouterProps) {
             fontSize: "3.2cqw",
             letterSpacing: "0.24em",
             color: T.white,
+            willChange: "opacity",
           }}
-          animate={{ opacity: [0.55, 1, 0.55] }}
-          transition={{ duration: 1.6, repeat: Infinity }}
+          animate={reduced ? { opacity: 0.85 } : { opacity: [0.55, 1, 0.55] }}
+          transition={{ duration: 1.8, repeat: reduced ? 0 : Infinity, ease: "easeInOut" }}
         >
           ↓ tap to fund the pool
         </motion.span>
@@ -3260,11 +3236,11 @@ function CardScreen({ dispatch, yourTotal }: RouterProps) {
             color: phase === "tapping" ? T.green : T.white,
           }}
           animate={
-            phase === "tapping"
+            phase === "tapping" && !reduced
               ? { scale: [1, 1.15, 1] }
               : { scale: 1 }
           }
-          transition={{ duration: 1, repeat: phase === "tapping" ? Infinity : 0 }}
+          transition={{ duration: 1, ease: "easeInOut", repeat: phase === "tapping" && !reduced ? Infinity : 0 }}
         >
           <svg
             viewBox="0 0 24 24"
@@ -3349,18 +3325,15 @@ function PhoneNFCIllustration({ tapping, done }: { tapping: boolean; done: boole
         style={{ left: "4%", top: "8%", width: "44%" }}
       >
         {[18, 30, 42].map((r, i) => (
-          <motion.path
+          <path
             key={r}
             d={`M ${50 - r * 0.8} ${50 - r * 0.4} A ${r} ${r} 0 0 1 ${50 - r * 0.8} ${50 + r * 0.4}`}
             fill="none"
             stroke={T.ink}
             strokeWidth="6"
             strokeLinecap="round"
-            initial={{ opacity: 0.85 }}
-            animate={
-              tapping ? { opacity: [0.85, 1, 0.85] } : done ? { opacity: 0.6 } : { opacity: 0.85 }
-            }
-            transition={{ duration: 0.8, delay: i * 0.15, repeat: tapping ? Infinity : 0 }}
+            opacity={done ? 0.6 : tapping ? 0.95 - i * 0.12 : 0.85}
+            style={{ transition: "opacity 240ms ease-out" }}
           />
         ))}
       </svg>
@@ -3392,18 +3365,19 @@ const POOL_ORDER: Diner[] = ["you", "maya", "sam", "jake"];
 
 type DinerStatus = "queued" | "tapping" | "paid";
 
-// Coin start positions for the flying-coin animation. These match
-// the 2x2 diner grid roughly — tuned by eye since pixel-perfect
-// alignment isn't necessary for the visual metaphor to read.
-const COIN_START: Record<Diner, { left: string; top: string }> = {
-  you:  { left: "26%", top: "76%" },
-  maya: { left: "74%", top: "76%" },
-  sam:  { left: "26%", top: "90%" },
-  jake: { left: "74%", top: "90%" },
+// Coin start positions (and ring landing point) as parent-relative
+// fractions. Resolved to pixel deltas at runtime so we can animate via
+// transform (GPU) instead of left/top (which trigger layout each frame).
+const COIN_START: Record<Diner, { x: number; y: number }> = {
+  you:  { x: 0.26, y: 0.76 },
+  maya: { x: 0.74, y: 0.76 },
+  sam:  { x: 0.26, y: 0.90 },
+  jake: { x: 0.74, y: 0.90 },
 };
-const RING_CENTER = { left: "50%", top: "32%" };
+const RING_CENTER = { x: 0.50, y: 0.32 };
 
 function PoolScreen({ state, dispatch }: RouterProps) {
+  const reduced = useReducedMotion();
   const tipPct = typeof state.tipPct === "number" ? state.tipPct / 100 : 0;
   const billMultiplier = 1 + tipPct + TAX_RATE;
 
@@ -3426,6 +3400,21 @@ function PoolScreen({ state, dispatch }: RouterProps) {
   });
   const [coins, setCoins] = useState<Array<{ id: string; from: Diner }>>([]);
   const [minted, setMinted] = useState(false);
+
+  // Measure the screen so coin flight uses pixel-precise transforms
+  // (GPU) instead of percentage left/top (CPU layout per frame).
+  const screenRef = useRef<HTMLDivElement>(null);
+  const [screenSize, setScreenSize] = useState({ w: 0, h: 0 });
+  useEffect(() => {
+    const el = screenRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect;
+      setScreenSize({ w: width, h: height });
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   useEffect(() => {
     const timers: ReturnType<typeof setTimeout>[] = [];
@@ -3468,6 +3457,7 @@ function PoolScreen({ state, dispatch }: RouterProps) {
 
   return (
     <div
+      ref={screenRef}
       className="relative w-full h-full font-grotesk overflow-hidden"
       style={{ background: T.cream, color: T.ink }}
     >
@@ -3506,22 +3496,23 @@ function PoolScreen({ state, dispatch }: RouterProps) {
         className="absolute"
         style={{
           left: "50%",
-          top: RING_CENTER.top,
+          top: `${RING_CENTER.y * 100}%`,
           transform: "translate(-50%, -50%)",
           width: "62%",
           aspectRatio: "1",
         }}
       >
-        {/* Ambient peach glow */}
+        {/* Ambient peach glow — opacity-only animation; static gradient
+            replaces the prior blur filter so we don't repaint a filter each frame. */}
         <motion.span
           aria-hidden
           className="absolute inset-0 rounded-full pointer-events-none"
           style={{
-            background: `radial-gradient(circle at 50% 50%, ${T.accent}33, transparent 65%)`,
-            filter: "blur(10px)",
+            background: `radial-gradient(circle at 50% 50%, ${T.accent}40, transparent 70%)`,
+            willChange: "opacity",
           }}
-          animate={{ opacity: [0.45, 0.85, 0.45] }}
-          transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+          animate={reduced ? { opacity: 0.6 } : { opacity: [0.45, 0.85, 0.45] }}
+          transition={{ duration: 2.4, repeat: reduced ? 0 : Infinity, ease: "easeInOut" }}
         />
 
         {/* Progress ring */}
@@ -3750,11 +3741,11 @@ function PoolScreen({ state, dispatch }: RouterProps) {
             <motion.div
               key={diner}
               animate={
-                isTapping
+                isTapping && !reduced
                   ? { scale: [1, 1.04, 1] }
                   : { scale: 1 }
               }
-              transition={{ duration: 0.55, repeat: isTapping ? Infinity : 0 }}
+              transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
               className="flex items-center"
               style={{
                 background: T.white,
@@ -3817,38 +3808,45 @@ function PoolScreen({ state, dispatch }: RouterProps) {
         })}
       </div>
 
-      {/* Flying coins — peach orbs flowing into the ring */}
+      {/* Flying coins — peach orbs flowing into the ring.
+          Each coin is positioned ONCE via inline left/top, then animated
+          with `x`/`y` translate (GPU). Travel distance is computed in pixels
+          from the measured screen so the trajectory survives any screen size. */}
       <AnimatePresence>
-        {coins.map((c) => (
-          <motion.div
-            key={c.id}
-            className="absolute pointer-events-none rounded-full"
-            initial={{
-              left: COIN_START[c.from].left,
-              top: COIN_START[c.from].top,
-              scale: 0.6,
-              opacity: 0,
-            }}
-            animate={{
-              left: [COIN_START[c.from].left, COIN_START[c.from].left, RING_CENTER.left],
-              top: [COIN_START[c.from].top, COIN_START[c.from].top, RING_CENTER.top],
-              scale: [0.6, 1.15, 0.4],
-              opacity: [0, 1, 0],
-            }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.7, ease: [0.4, 0, 0.65, 1], times: [0, 0.18, 1] }}
-            onAnimationComplete={() => {
-              setCoins((cs) => cs.filter((x) => x.id !== c.id));
-            }}
-            style={{
-              width: "5cqw",
-              height: "5cqw",
-              background: `radial-gradient(circle at 30% 30%, #FFD8B0, ${T.accent})`,
-              boxShadow: `0 4px 16px ${T.accent}99, 0 0 0 1px rgba(255,255,255,0.5) inset`,
-              transform: "translate(-50%, -50%)",
-            }}
-          />
-        ))}
+        {coins.map((c) => {
+          const start = COIN_START[c.from];
+          const dx = (RING_CENTER.x - start.x) * screenSize.w;
+          const dy = (RING_CENTER.y - start.y) * screenSize.h;
+          return (
+            <motion.div
+              key={c.id}
+              className="absolute pointer-events-none rounded-full"
+              style={{
+                left: `${start.x * 100}%`,
+                top: `${start.y * 100}%`,
+                width: "5cqw",
+                height: "5cqw",
+                marginLeft: "-2.5cqw",
+                marginTop: "-2.5cqw",
+                background: `radial-gradient(circle at 30% 30%, #FFD8B0, ${T.accent})`,
+                boxShadow: `0 4px 16px ${T.accent}99, 0 0 0 1px rgba(255,255,255,0.5) inset`,
+                willChange: "transform, opacity",
+              }}
+              initial={{ x: 0, y: 0, scale: 0.6, opacity: 0 }}
+              animate={{
+                x: [0, 0, dx],
+                y: [0, 0, dy],
+                scale: [0.6, 1.15, 0.4],
+                opacity: [0, 1, 0],
+              }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.7, ease: [0.4, 0, 0.65, 1], times: [0, 0.18, 1] }}
+              onAnimationComplete={() => {
+                setCoins((cs) => cs.filter((x) => x.id !== c.id));
+              }}
+            />
+          );
+        })}
       </AnimatePresence>
     </div>
   );
@@ -3872,15 +3870,24 @@ function TabbyCardScreen({ state, dispatch }: RouterProps) {
     [state.claims, state.customSplits, billMultiplier],
   );
 
+  const reduced = useReducedMotion();
   const [phase, setPhase] = useState<"ready" | "tapping" | "done">("ready");
+
+  const tapTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  useEffect(() => () => {
+    tapTimers.current.forEach(clearTimeout);
+  }, []);
 
   const onTap = () => {
     if (phase !== "ready") return;
     setPhase("tapping");
-    setTimeout(() => {
+    tapTimers.current.push(setTimeout(() => {
       setPhase("done");
-      setTimeout(() => dispatch({ type: "GOTO", screen: "success" }), 800);
-    }, 1300);
+      tapTimers.current.push(setTimeout(
+        () => dispatch({ type: "GOTO", screen: "success" }),
+        800,
+      ));
+    }, 1300));
   };
 
   return (
@@ -3899,9 +3906,10 @@ function TabbyCardScreen({ state, dispatch }: RouterProps) {
             fontSize: "3.4cqw",
             letterSpacing: "0.24em",
             color: T.accent,
+            willChange: "opacity",
           }}
-          animate={{ opacity: [0.55, 1, 0.55] }}
-          transition={{ duration: 1.6, repeat: Infinity }}
+          animate={reduced ? { opacity: 0.85 } : { opacity: [0.55, 1, 0.55] }}
+          transition={{ duration: 1.8, repeat: reduced ? 0 : Infinity, ease: "easeInOut" }}
         >
           ✦ tap to charge merchant
         </motion.span>
@@ -3975,9 +3983,11 @@ function TabbyCardScreen({ state, dispatch }: RouterProps) {
             color: phase === "tapping" || phase === "done" ? T.green : T.white,
           }}
           animate={
-            phase === "tapping" ? { scale: [1, 1.18, 1] } : { scale: 1 }
+            phase === "tapping" && !reduced
+              ? { scale: [1, 1.18, 1] }
+              : { scale: 1 }
           }
-          transition={{ duration: 1, repeat: phase === "tapping" ? Infinity : 0 }}
+          transition={{ duration: 1, ease: "easeInOut", repeat: phase === "tapping" && !reduced ? Infinity : 0 }}
         >
           <svg
             viewBox="0 0 24 24"
@@ -6077,4 +6087,3 @@ function ReplayScreen({ dispatch }: RouterProps) {
     </div>
   );
 }
-

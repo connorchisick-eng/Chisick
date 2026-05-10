@@ -256,15 +256,15 @@ html.lenis body { height: auto; }
   width: min(
     calc((100svh - 180px) * 450 / 920),
     calc(100vw - 32px),
-    520px
+    500px
   );
 }
 @media (min-width: 768px) {
   .demo-phone-shell {
     width: min(
-      calc((100svh - 130px) * 450 / 920),
+      calc((100svh - 126px) * 450 / 920),
       calc(100vw - 64px),
-      680px
+      520px
     );
   }
 }

@@ -721,3 +721,39 @@ Verification: `pnpm exec tsc --noEmit` and `pnpm build` both pass.
 - Note: this cloud runner does not have Node/pnpm installed, so local install/build verification could not run here; the failure condition was verified directly against the manifest + lockfile mismatch from the Vercel log.
 
 ---
+
+## 40. Framed expanded hero screens
+
+- Updated the hero carousel lightbox so clicked individual screens render inside the existing iPhone SVG bezel.
+- Kept the main carousel as raw screen cards; the iPhone frame appears only after selecting/expanding a specific screen.
+- Removed the expanded-state micro-animation; selected screens now open in a static iPhone frame.
+
+Verification: `pnpm exec tsc --noEmit` passes.
+
+---
+
+## 41. Demo page — performance pass + left-rail redesign
+
+The interactive demo (`/demo`) was choppy and laggy across platforms. Fixed the worst offenders and rebuilt the left-side narrative panel.
+
+**Performance fixes (smoother on mobile + low-end laptops):**
+
+- **Coin flight animation** in the Pool screen was animating `left`/`top` (CSS layout properties) — switched to GPU-accelerated `x`/`y` transforms with a measured container ref so each coin's trajectory uses pixel deltas instead of percentage-of-parent recomputed every frame.
+- **Scan-line** in the Scanning screen was also animating `top` — moved to `transform: translateY` with `willChange: transform`.
+- **Scene transitions** (PhoneRouter) used a full-viewport `filter: blur(8px)` on every screen change. Blur on a full-screen element kills mobile GPUs. Replaced with a 280ms opacity + 6px translate. No more half-frame blur stutter.
+- **Infinite Framer loops** (NFC pulses, ring-glow blur, diner card pulse, tap instructions) now respect `prefers-reduced-motion` and either stop one-shot or never start.
+- **PoolScreen ring glow**: removed the per-frame `filter: blur(10px)` repaint; the gradient itself does the falloff, only opacity tweens.
+- **NarrativePanel scene transition**: dropped the cascading per-child stagger and direction-based slide. The whole eyebrow → title → body → highlight block now does a single 220ms cross-dissolve. Phase chip and step counter are linear opacity-only fades.
+- **Timeout cleanup**: CardScreen and TabbyCardScreen now keep their tap-sequence timeouts in refs and clear them on unmount, so navigating away mid-tap doesn't fire stale dispatches.
+- **PhoneNFCIllustration**: dropped 3 per-arc infinite Framer loops; the arcs now use a static opacity gradient with a CSS transition.
+
+**Left-rail redesign:**
+
+- The narrative panel had huge vertical dead space below the body copy on short scenes. Tried adding a "Live Ledger" sidebar (live diner totals + grand total ticker), then pulled it out — kept the rail purely typographic.
+- Final layout: rail stretches to the phone column height (`lg:items-stretch`) and vertically centers its content, so the cluster sits as a single balanced block beside the device. No more floor-anchored "stuff at the very top, void in the middle, controls at the very bottom."
+- Tightened the type rhythm: eyebrow → title (clamp(2rem, 3.4vw, 2.85rem), tight leading, text-balance) → body (capped at 36ch for editorial measure) → highlight (now a peach left-rule callout instead of a bordered card).
+- Progress strip + CTAs flow immediately beneath the body — no min-height floor pushing them down.
+
+Verification: `bun run typecheck` passes.
+
+---
