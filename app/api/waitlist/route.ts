@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { checkBotId } from "botid/server";
 import { sql } from "@/lib/db";
 import {
   bodyTooLarge,
@@ -63,6 +64,14 @@ export async function POST(req: Request) {
         ),
     });
     if (limited) return limited;
+
+    const verification = await checkBotId();
+    if (verification.isBot) {
+      return NextResponse.json(
+        { ok: false, error: "bot_detected" },
+        { status: 403, headers: { "cache-control": "no-store" } },
+      );
+    }
 
     let body: { name?: unknown; email?: unknown; phone?: unknown };
     try {

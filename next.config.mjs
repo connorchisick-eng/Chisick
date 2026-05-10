@@ -1,5 +1,6 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { withBotId } from "botid/next/config";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -70,4 +71,4 @@ const nextConfig = {
   skipTrailingSlashRedirect: true,
 };
 
-export default nextConfig;
+export default withBotId(nextConfig);

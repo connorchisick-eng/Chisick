@@ -1,4 +1,5 @@
 import { streamText, type ModelMessage } from "ai";
+import { checkBotId } from "botid/server";
 import { AGENT_SYSTEM_PROMPT } from "@/lib/agent-prompt";
 import {
   bodyTooLarge,
@@ -88,6 +89,11 @@ export async function POST(req: Request) {
       jsonError("Too many requests.", 429, { "retry-after": retryAfter }),
   });
   if (limited) return limited;
+
+  const verification = await checkBotId();
+  if (verification.isBot) {
+    return jsonError("Bot detected.", 403);
+  }
 
   let body: unknown;
   try {
